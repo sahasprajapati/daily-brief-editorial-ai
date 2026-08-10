@@ -38,3 +38,5 @@ docker compose up -d --build
 # docker compose up -d mongodb
 bun run dev
 ```
+
+The **app** image targets &lt;1GB (Next `standalone` + `oven/bun:1-slim`). The official `mongo:7` image is separate and ~1GB+; use an external Mongo if total disk must stay under 1GB.

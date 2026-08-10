@@ -1,8 +1,22 @@
+# Keep build context small (local node_modules alone is ~1.7GB).
 node_modules
 .git
+.github
 .next
 .cache
 dist
 *.log
 .env
 .env.local
+.env*.local
+docs
+**/*.test.ts
+**/*.test.tsx
+coverage
+.superpowers
+.claude
+*.md
+!okf-ruleset/**/*.md
+Dockerfile
+docker-compose.yml
+.dockerignore
