@@ -1,33 +1,44 @@
+# Dokploy-friendly compose:
+# - no container_name (breaks Dokploy logs/metrics/domains)
+# - expose internal ports only (Traefik routes the domain; host binds cause conflicts)
+# - dokploy-network so Traefik can reach `app` when a domain is assigned
 services:
   mongodb:
     image: mongo:7
-    container_name: trt-newsroom-mongo
     restart: unless-stopped
-    ports:
-      - '27017:27017'
+    expose:
+      - '27017'
     volumes:
       - mongo-data:/data/db
     environment:
       MONGO_INITDB_DATABASE: trt-newsroom-ai
+    networks:
+      - default
+      - dokploy-network
 
   app:
     build:
       context: .
       args:
         TIPTAP_AUTH_TOKEN: ${TIPTAP_AUTH_TOKEN:-}
-    container_name: trt-newsroom-app
     restart: unless-stopped
-    ports:
-      - '3000:3000'
+    expose:
+      - '3000'
     env_file:
       - .env
     environment:
-      # Compose network hostname — overrides localhost from .env
       DATABASE_URI: mongodb://mongodb:27017/trt-newsroom-ai
       HOSTNAME: 0.0.0.0
       PORT: 3000
     depends_on:
       - mongodb
+    networks:
+      - default
+      - dokploy-network
 
 volumes:
   mongo-data:
+
+networks:
+  dokploy-network:
+    external: true
