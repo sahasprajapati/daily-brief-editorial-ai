@@ -4,11 +4,30 @@ services:
     container_name: trt-newsroom-mongo
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - '27017:27017'
     volumes:
       - mongo-data:/data/db
     environment:
       MONGO_INITDB_DATABASE: trt-newsroom-ai
+
+  app:
+    build:
+      context: .
+      args:
+        TIPTAP_AUTH_TOKEN: ${TIPTAP_AUTH_TOKEN:-}
+    container_name: trt-newsroom-app
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env
+    environment:
+      # Compose network hostname — overrides localhost from .env
+      DATABASE_URI: mongodb://mongodb:27017/trt-newsroom-ai
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+    depends_on:
+      - mongodb
 
 volumes:
   mongo-data:

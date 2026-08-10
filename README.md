@@ -28,10 +28,13 @@ bun install
 
 # 2. Copy and fill in environment variables
 cp .env.example .env
+# TipTap Pro token is required to build the app image (payload-richtext-tiptap).
+# Put TIPTAP_AUTH_TOKEN in .env (or export it) before docker compose build.
 
-# 3. Start MongoDB + app
+# 3. Start MongoDB + app (app on :3000, mongo on :27017)
 docker compose up -d --build
 
-# Or run locally with an existing MongoDB
+# Or run the app locally against compose Mongo only:
+# docker compose up -d mongodb
 bun run dev
 ```
