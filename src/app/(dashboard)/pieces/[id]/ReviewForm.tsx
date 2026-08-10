@@ -58,16 +58,17 @@ export function ReviewForm({
           </p>
           <div className="tiptap-review-editor">
             <BlockEditor
-              content={initialDoc}
+              // Package types require html+json; we only round-trip TipTap JSON.
+              content={{ html: '', json: initialDoc }}
+              hasCollab={false}
               isEditable
               autoFocus={false}
               dir="ltr"
-              additionalContext={{ language: 'en' }}
+              additionalContext={{ language: 'en', translations: {} }}
               handleChange={(value) => {
-                setBlocks(tiptapToContentBlocks(value as TiptapDoc))
+                const doc = (value?.json ?? value) as TiptapDoc
+                setBlocks(tiptapToContentBlocks(doc))
               }}
-              openAssetHQHandler={undefined}
-              fetchSiteMetadata={async () => undefined}
             />
           </div>
           <div className="form-actions">

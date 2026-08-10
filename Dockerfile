@@ -29,8 +29,9 @@ RUN bun run build
 FROM oven/bun:1 AS runner
 WORKDIR /app
 
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
+# oven/bun is Debian-based; use groupadd/useradd (addgroup/adduser are not installed).
+RUN groupadd --system --gid 1001 nodejs && \
+    useradd --system --uid 1001 --gid nodejs nextjs
 
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
