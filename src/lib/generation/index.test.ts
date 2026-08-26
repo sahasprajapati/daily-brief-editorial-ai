@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, spyOn, test } from 'bun:test'
 import type { CollectedItem, BriefItem, EditorialBrief, ChannelConfig, User } from '@/payload-types'
-import * as gemini from './gemini'
+import * as openai from './openai'
 import { generatePiece, generatePieceForTopic } from './index'
 
 const user = { id: 'lead-1', role: 'editor' } as User
@@ -40,12 +40,12 @@ function fakePayload() {
 }
 
 afterEach(() => {
-  ;(gemini.runGeneration as any).mockRestore?.()
+  ;(openai.runGeneration as any).mockRestore?.()
 })
 
 describe('generatePiece', () => {
   test('mints blocks with ids and builds the attribution string from sources', async () => {
-    const runSpy = spyOn(gemini, 'runGeneration').mockResolvedValue({
+    const runSpy = spyOn(openai, 'runGeneration').mockResolvedValue({
       blocks: [
         { type: 'heading', text: 'Generated headline' },
         { type: 'paragraph', text: 'Generated paragraph.' },
@@ -78,7 +78,7 @@ describe('generatePiece', () => {
       sources: [{ provider: { id: 'p2', name: 'Other Wire' }, providerItemId: 'y' }],
     } as unknown as CollectedItem
 
-    const runSpy = spyOn(gemini, 'runGeneration').mockResolvedValue({
+    const runSpy = spyOn(openai, 'runGeneration').mockResolvedValue({
       blocks: [{ type: 'heading', text: 'Combined' }, { type: 'paragraph', text: 'Body.' }],
     })
 

@@ -1,5 +1,5 @@
 import { generateObject } from 'ai'
-import { google } from '@ai-sdk/google'
+import { openai } from '@ai-sdk/openai'
 import { generatedPieceSchema, type GeneratedPieceBlocks } from './schema'
 
 export interface GenerationSource {
@@ -17,6 +17,9 @@ export interface GenerationInput {
   requiredContext: string
   bannedTerms: string[]
   guidelineText: string | null
+  /** Channel-specific additions to the general guideline (see channel-configs) - supplements
+   *  guidelineText, doesn't replace it. */
+  extraWritingInstructions?: string | null
   sources: GenerationSource[]
 }
 
@@ -40,7 +43,7 @@ STORY-SPECIFIC GUIDANCE (overrides general guidance on conflict):
 
 GENERAL DESK GUIDELINE:
 ${input.guidelineText ?? 'None provided.'}
-
+${input.extraWritingInstructions ? `\nCHANNEL-SPECIFIC ADDITIONS (supplements the general guideline above, does not override story-specific guidance):\n${input.extraWritingInstructions}\n` : ''}
 WRITING STANDARDS:
 - Open inside the story's key fact, not scene-setting.
 - Vary sentence length. No paragraph over four sentences.
@@ -68,7 +71,7 @@ function buildSourcesPrompt(sources: GenerationSource[]): string {
 
 export async function runGeneration(input: GenerationInput): Promise<GeneratedPieceBlocks> {
   const { object } = await generateObject({
-    model: google('gemini-flash-lite-latest'),
+    model: openai('gpt-4.1-mini'),
     schema: generatedPieceSchema,
     system: buildSystemPrompt(input),
     prompt: buildSourcesPrompt(input.sources),

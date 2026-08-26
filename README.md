@@ -16,7 +16,7 @@ Not integrated into `trt-global-cms-prod` — talks to it only over its REST API
 
 - Bun >= 1.3
 - A MongoDB instance (or use `docker compose up -d` to start one)
-- `GOOGLE_GENERATIVE_AI_API_KEY` (Gemini, via `@ai-sdk/google`) — matches the LLM already used by the `trt-editorial-n8n` prototype and by `trt-global-cms-prod`.
+- `OPENAI_API_KEY` (via `@ai-sdk/openai`) — powers brief parsing, wire relevance filtering, article generation, and naturalness QA.
 - `EVENT_REGISTRY_API_KEY`
 - `CMS_API_KEY` — a Payload API key for a single dedicated "AI account" service user in `trt-global-cms-prod`.
 

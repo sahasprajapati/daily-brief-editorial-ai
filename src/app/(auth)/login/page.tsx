@@ -20,7 +20,7 @@ export default function LoginPage() {
   return (
     <div className="center-page">
       <div className="card">
-        <h1>TRT Newsroom AI</h1>
+        <h1>Editorial Assistant</h1>
         <p className="subtitle">Sign in to review and claim pieces.</p>
 
         <form action={formAction}>

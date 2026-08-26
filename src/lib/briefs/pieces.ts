@@ -65,6 +65,7 @@ export function toBriefArticleRows(
   topic?: string
   attributionString?: string
   createdAt?: string
+  coverImageDataUrl?: string | null
 }> {
   return pieces.map((piece) => {
     const briefItemId = briefItemIdOfPiece(piece)
@@ -74,6 +75,7 @@ export function toBriefArticleRows(
       topic: briefItemId ? topicByItemId[briefItemId] : undefined,
       attributionString: piece.attributionString,
       createdAt: piece.createdAt,
+      coverImageDataUrl: piece.coverImageDataUrl,
     }
   })
 }

@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, spyOn, test } from 'bun:test'
-import * as gemini from './relevance-gemini'
+import * as openai from './relevance-openai'
 import { filterRelevantNewsHqHits } from './relevance'
 
 afterEach(() => {
-  ;(gemini.runRelevanceCheck as any).mockRestore?.()
+  ;(openai.runRelevanceCheck as any).mockRestore?.()
 })
 
 describe('filterRelevantNewsHqHits', () => {
   test('returns only ids marked relevant by the model', async () => {
-    spyOn(gemini, 'runRelevanceCheck').mockResolvedValue([
+    spyOn(openai, 'runRelevanceCheck').mockResolvedValue([
       { providerItemId: 'a', relevant: true, reason: 'same story' },
       { providerItemId: 'b', relevant: false, reason: 'generic football' },
     ])

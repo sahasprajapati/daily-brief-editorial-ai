@@ -64,11 +64,11 @@ export async function uploadBrief(_prev: UploadBriefState, formData: FormData): 
     if (err instanceof EmptyBriefError) return { error: err.message, duplicateOf: null }
     console.error('[uploadBrief] extractBrief failed:', err)
     const detail = err instanceof Error ? err.message : 'Unknown error'
-    if (/API key|GOOGLE_GENERATIVE_AI|Unauthenticated|401|403/i.test(detail)) {
-      return { error: 'Could not parse this brief — set GOOGLE_GENERATIVE_AI_API_KEY in .env and restart.', duplicateOf: null }
+    if (/API key|OPENAI_API_KEY|Unauthenticated|401|403/i.test(detail)) {
+      return { error: 'Could not parse this brief — set OPENAI_API_KEY in .env and restart.', duplicateOf: null }
     }
     if (/model|404|not found/i.test(detail)) {
-      return { error: 'Could not parse this brief — Gemini model unavailable. Check model id / API access.', duplicateOf: null }
+      return { error: 'Could not parse this brief — OpenAI model unavailable. Check model id / API access.', duplicateOf: null }
     }
     const short = detail.replace(/\s+/g, ' ').slice(0, 180)
     return { error: `Could not parse this brief: ${short}`, duplicateOf: null }

@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from 'bun:test'
-import * as gemini from './gemini'
+import * as openai from './openai'
 import { EmptyBriefError, extractBrief } from './index'
 
 describe('extractBrief', () => {
@@ -20,7 +20,7 @@ describe('extractBrief', () => {
         requiredContext: 'Current death toll',
       },
     ]
-    spyOn(gemini, 'runExtraction').mockResolvedValue({ items })
+    spyOn(openai, 'runExtraction').mockResolvedValue({ items })
 
     const result = await extractBrief('some raw brief text')
 
@@ -28,7 +28,7 @@ describe('extractBrief', () => {
   })
 
   test('throws EmptyBriefError and persists nothing when zero topics are extracted', async () => {
-    spyOn(gemini, 'runExtraction').mockResolvedValue({ items: [] })
+    spyOn(openai, 'runExtraction').mockResolvedValue({ items: [] })
 
     await expect(extractBrief('empty text')).rejects.toThrow(EmptyBriefError)
   })

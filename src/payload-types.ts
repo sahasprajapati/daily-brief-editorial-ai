@@ -373,6 +373,12 @@ export interface GeneratedPiece {
    * The id createArticle() returned from trt-global-cms-prod. Unused while CMS publish is stubbed.
    */
   cmsPackageId?: string | null;
+  /**
+   * data: URI of the generated cover image (see src/lib/cover-image) - placeholder storage via OpenAI image generation until a real asset pipeline / Atlas AI replaces it.
+   */
+  coverImageDataUrl?: string | null;
+  coverImagePrompt?: string | null;
+  coverImageGeneratedAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -391,6 +397,12 @@ export interface PieceAssignment {
   previousAssignee?: (string | null) | User;
   status: 'claimed' | 'inProgress' | 'inQA' | 'verdictReached' | 'awaitingApproval' | 'approved' | 'published';
   claimedAt: string;
+  /**
+   * Set when a manager sends a piece back — shown to the editor as the reason. Latest note only, overwritten on the next send-back.
+   */
+  managerNote?: string | null;
+  managerNoteBy?: (string | null) | User;
+  managerNoteAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -480,6 +492,18 @@ export interface ChannelConfig {
    * Matches a filename under okf-ruleset/guidelines/ (without .md). Empty = no desk-specific guideline.
    */
   guidelineSlug?: string | null;
+  majorQaFileName?: string | null;
+  majorQaFileText?: string | null;
+  majorInstructionsFileName?: string | null;
+  majorInstructionsFileText?: string | null;
+  /**
+   * Channel-specific additions to the general okf-ruleset QA checks - the AI QA verdict judges against the general checks plus these. Does not replace the general rules.
+   */
+  extraQaInstructions?: string[] | null;
+  /**
+   * Channel-specific additions to the general desk guideline - article generation writes against the general guideline plus these. Does not replace the general rules.
+   */
+  extraWritingInstructions?: string[] | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -714,6 +738,9 @@ export interface GeneratedPiecesSelect<T extends boolean = true> {
   restrictionReason?: T;
   publishedAt?: T;
   cmsPackageId?: T;
+  coverImageDataUrl?: T;
+  coverImagePrompt?: T;
+  coverImageGeneratedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -728,6 +755,9 @@ export interface PieceAssignmentsSelect<T extends boolean = true> {
   previousAssignee?: T;
   status?: T;
   claimedAt?: T;
+  managerNote?: T;
+  managerNoteBy?: T;
+  managerNoteAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -798,6 +828,12 @@ export interface ChannelConfigsSelect<T extends boolean = true> {
   language?: T;
   erLang?: T;
   guidelineSlug?: T;
+  majorQaFileName?: T;
+  majorQaFileText?: T;
+  majorInstructionsFileName?: T;
+  majorInstructionsFileText?: T;
+  extraQaInstructions?: T;
+  extraWritingInstructions?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -848,13 +884,15 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
 export interface NewsHqSetting {
   id: string;
   /**
-   * Wire agencies to include (values from NewsHQ /filters). Empty = all agencies for the search language.
+   * Per-wire priority filter (values from NewsHQ /filters). A wire not listed here is not searched, unless the list is empty entirely - then every agency/priority is searched unrestricted.
    */
-  agencies?: string[] | null;
-  /**
-   * NewsHQ priority filter values, e.g. 1,2,3,4.
-   */
-  priorities?: string[] | null;
+  wirePriorities?:
+    | {
+        agency: string;
+        priority: string;
+        id?: string | null;
+      }[]
+    | null;
   /**
    * Fallback NewsHQ lang when the desk has no language mapping.
    */
@@ -871,8 +909,13 @@ export interface NewsHqSetting {
  * via the `definition` "news-hq-settings_select".
  */
 export interface NewsHqSettingsSelect<T extends boolean = true> {
-  agencies?: T;
-  priorities?: T;
+  wirePriorities?:
+    | T
+    | {
+        agency?: T;
+        priority?: T;
+        id?: T;
+      };
   defaultLang?: T;
   limit?: T;
   updatedAt?: T;

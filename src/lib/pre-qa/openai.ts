@@ -1,5 +1,5 @@
 import { generateObject } from 'ai'
-import { google } from '@ai-sdk/google'
+import { openai } from '@ai-sdk/openai'
 import { z } from 'zod'
 
 const naturalnessSchema = z.object({
@@ -29,7 +29,7 @@ Score naturalness and overall quality 0-100 and list concrete rewrite suggestion
 
 export async function runNaturalnessCheck(articleText: string): Promise<NaturalnessResult> {
   const { object } = await generateObject({
-    model: google('gemini-flash-lite-latest'),
+    model: openai('gpt-4.1-mini'),
     schema: naturalnessSchema,
     system: SYSTEM_PROMPT,
     prompt: articleText,

@@ -1,4 +1,4 @@
-import { runExtraction } from './gemini'
+import { runExtraction } from './openai'
 import type { ExtractedBriefItem } from './schema'
 
 export class EmptyBriefError extends Error {

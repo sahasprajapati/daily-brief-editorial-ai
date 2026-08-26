@@ -162,3 +162,26 @@ export const leadOfDeskPieceCreate: Access = async ({ req, data }) => {
   })
   return isLeadOfDesk(typedUser, brief?.channel)
 }
+
+/** channel-configs.channel is the doc's own field, so create is a direct check against data -
+ *  a desk lead may seed/edit their own channel's AI settings, tool admin still governs
+ *  everything else on this collection (language/erLang/guidelineSlug stay admin-managed via
+ *  /admin, only the two "extra instructions" fields are exposed to leads in-app). */
+export const leadOfDeskChannelConfigCreate: Access = ({ req: { user }, data }) => {
+  const typedUser = user as User | null
+  if (checkIsAdmin(typedUser)) return true
+  return isLeadOfDesk(typedUser, data?.channel)
+}
+
+export const leadOfDeskChannelConfigUpdate: Access = async ({ req, id }) => {
+  const typedUser = req.user as User | null
+  if (checkIsAdmin(typedUser)) return true
+  if (!id) return false
+  const config = await req.payload.findByID({
+    collection: 'channel-configs',
+    id,
+    depth: 0,
+    overrideAccess: true,
+  })
+  return isLeadOfDesk(typedUser, config?.channel)
+}

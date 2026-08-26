@@ -3,19 +3,28 @@
 import { useRouter } from 'next/navigation'
 import { useActionState } from 'react'
 import type { QaSuggestion } from '@/lib/qa-suggestions'
+import type { QaVerdictValue } from '@/lib/qa-verdict'
 import { submitVerdict } from './actions'
 
 type VerdictState = { error: string | null; warning: string | null }
 
 const initialState: VerdictState = { error: null, warning: null }
 
+const VERDICT_LABEL: Record<QaVerdictValue, string> = {
+  goodToGo: 'Good to go',
+  needsAttention: 'Needs attention',
+  rejected: 'Rejected',
+}
+
 export function VerdictForm({
   pieceId,
   suggestions,
+  aiSuggestedVerdict,
   onSubmitted,
 }: {
   pieceId: string
   suggestions: QaSuggestion[]
+  aiSuggestedVerdict?: QaVerdictValue | null
   onSubmitted?: () => void
 }) {
   const router = useRouter()
@@ -43,8 +52,13 @@ export function VerdictForm({
         suggestion{suggestions.length === 1 ? '' : 's'}).
       </p>
       <form action={formAction}>
-        <label htmlFor="verdict">Verdict</label>
-        <select id="verdict" name="verdict" required defaultValue="">
+        <label htmlFor="verdict">
+          Verdict
+          {aiSuggestedVerdict && (
+            <span className="meta"> — AI suggested: {VERDICT_LABEL[aiSuggestedVerdict]}</span>
+          )}
+        </label>
+        <select id="verdict" name="verdict" required defaultValue={aiSuggestedVerdict ?? ''}>
           <option value="" disabled>
             Choose one
           </option>

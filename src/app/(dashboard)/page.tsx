@@ -3,156 +3,123 @@ import { cookies } from 'next/headers'
 import { getPayload } from 'payload'
 import configPromise from '@payload-config'
 import { requireUser } from '@/payload/auth/session'
-import {
-  groupPiecesByBrief,
-  pieceHeadline,
-} from '@/lib/briefs/pieces'
-import type { GeneratedPiece, PieceAssignment } from '@/payload-types'
-import { ClaimButton } from './ClaimButton'
 
-const STATUS_LABEL: Record<string, string> = {
-  claimed: 'Claimed',
-  inProgress: 'In progress',
-  inQA: 'In QA',
-  verdictReached: 'Verdict reached',
-  awaitingApproval: 'Awaiting approval',
-  approved: 'Approved',
-  published: 'Published',
+function DocIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M4 1.5h5.5L13 5v9.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-12a1 1 0 0 1 1-1Z"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+      <path d="M9.5 1.5V5H13" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+/** One finished batch of editorial output: a brief that has produced at least one generated
+ *  article. Not called a "brief" in the UI - by the time it has articles, it's the result of
+ *  the whole collect → generate → QA pipeline, not just an uploaded document. */
+interface EditorialOutput {
+  briefId: string
+  title: string
+  createdAt: string
+  articleCount: number
+}
+
+async function loadRecentEditorialOutput(
+  selectedChannel: string,
+  user: Awaited<ReturnType<typeof requireUser>>,
+): Promise<EditorialOutput[]> {
+  const payload = await getPayload({ config: configPromise })
+
+  const briefs = await payload.find({
+    collection: 'editorial-briefs',
+    where: {
+      and: [
+        { status: { not_equals: 'superseded' } },
+        ...(selectedChannel === 'all' ? [] : [{ channel: { equals: selectedChannel } }]),
+      ],
+    },
+    sort: '-createdAt',
+    // Candidates, not the final list - only briefs that actually produced articles count as
+    // "output", so we may need to look past a few empty/in-progress ones to fill the list.
+    limit: 25,
+    overrideAccess: false,
+    user,
+  })
+
+  const output: EditorialOutput[] = []
+  for (const brief of briefs.docs) {
+    const pieces = await payload.find({
+      collection: 'generated-pieces',
+      where: { brief: { equals: brief.id } },
+      limit: 0,
+      overrideAccess: true,
+    })
+    if (pieces.totalDocs === 0) continue
+    output.push({
+      briefId: brief.id,
+      title: brief.title,
+      createdAt: brief.createdAt,
+      articleCount: pieces.totalDocs,
+    })
+    if (output.length >= 8) break
+  }
+  return output
+}
+
+function formatOutputDate(value: string): string {
+  return new Date(value).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 export default async function DashboardPage() {
   const user = await requireUser()
-  const payload = await getPayload({ config: configPromise })
   const cookieStore = await cookies()
   const selectedChannel = cookieStore.get('selected-channel')?.value ?? 'all'
-
-  const [allPieces, allAssignments, myAssignments] = await Promise.all([
-    payload.find({
-      collection: 'generated-pieces',
-      where: selectedChannel === 'all' ? undefined : { channel: { equals: selectedChannel } },
-      limit: 100,
-      depth: 1,
-      sort: '-createdAt',
-      overrideAccess: false,
-      user,
-    }),
-    payload.find({
-      collection: 'piece-assignments',
-      limit: 100,
-      overrideAccess: false,
-      user,
-    }),
-    payload.find({
-      collection: 'piece-assignments',
-      where: { assignedTo: { equals: user.id } },
-      limit: 100,
-      depth: 2,
-      overrideAccess: false,
-      user,
-    }),
-  ])
-
-  const claimedPieceIds = new Set(
-    allAssignments.docs.map((assignment) =>
-      typeof assignment.piece === 'string' ? assignment.piece : assignment.piece.id,
-    ),
-  )
-  const unclaimedPieces = allPieces.docs.filter((piece) => !claimedPieceIds.has(piece.id))
-  const unclaimedGroups = groupPiecesByBrief(unclaimedPieces)
-
-  const myFilteredAssignments =
-    selectedChannel === 'all'
-      ? myAssignments.docs
-      : myAssignments.docs.filter((assignment) => {
-          const piece = assignment.piece
-          return typeof piece === 'object' && piece.channel === selectedChannel
-        })
-
-  const myPieces = myFilteredAssignments
-    .map((assignment) => assignment.piece)
-    .filter((piece): piece is GeneratedPiece => typeof piece === 'object' && piece !== null)
-  const myGroups = groupPiecesByBrief(myPieces)
-  const statusByPieceId = new Map(
-    myFilteredAssignments.map((assignment) => {
-      const pieceId =
-        typeof assignment.piece === 'string' ? assignment.piece : assignment.piece.id
-      return [pieceId, assignment.status] as const
-    }),
-  )
+  const editorialOutput = await loadRecentEditorialOutput(selectedChannel, user)
 
   return (
     <div className="page">
-      <h1>TRT Newsroom AI</h1>
-      <p className="subtitle">Signed in as {user.email}</p>
-
-      <div className="card">
-        <h2>Unclaimed pieces</h2>
-        {unclaimedGroups.length === 0 ? (
-          <p>Nothing waiting right now.</p>
-        ) : (
-          <div className="brief-piece-groups">
-            {unclaimedGroups.map((group) => (
-              <section key={group.briefId} className="brief-piece-group">
-                <h3 className="brief-piece-group-title">
-                  {group.briefId === 'unknown' ? (
-                    group.briefTitle
-                  ) : (
-                    <Link href={`/briefs/${group.briefId}?tab=articles`}>{group.briefTitle}</Link>
-                  )}
-                  <span className="badge">{group.pieces.length}</span>
-                </h3>
-                <ul className="list">
-                  {group.pieces.map((piece) => (
-                    <li key={piece.id} className="list-item">
-                      <span>
-                        {pieceHeadline(piece)}
-                        {piece.channelName ? ` — ${piece.channelName}` : ''}
-                      </span>
-                      <ClaimButton pieceId={piece.id} />
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))}
-          </div>
-        )}
+      <div className="page-header">
+        <div>
+          <h1>Editorial Assistant</h1>
+          <p className="subtitle">Signed in as {user.email}</p>
+        </div>
       </div>
 
-      <div className="card" style={{ marginTop: '1.5rem' }}>
-        <h2>My pieces</h2>
-        {myGroups.length === 0 ? (
-          <p>You haven&apos;t claimed anything yet.</p>
+      <div className="card">
+        <h2>Recent editorial output</h2>
+        {editorialOutput.length === 0 ? (
+          <p className="subtitle" style={{ marginBottom: 0 }}>
+            Nothing generated yet{selectedChannel !== 'all' ? ' for this channel' : ''}. Articles show up here once a
+            brief has gone through collection and generation.
+          </p>
         ) : (
-          <div className="brief-piece-groups">
-            {myGroups.map((group) => (
-              <section key={group.briefId} className="brief-piece-group">
-                <h3 className="brief-piece-group-title">
-                  {group.briefId === 'unknown' ? (
-                    group.briefTitle
-                  ) : (
-                    <Link href={`/briefs/${group.briefId}?tab=articles`}>{group.briefTitle}</Link>
-                  )}
-                  <span className="badge">{group.pieces.length}</span>
-                </h3>
-                <ul className="list">
-                  {group.pieces.map((piece) => (
-                    <li key={piece.id} className="list-item">
-                      <span>
-                        {pieceHeadline(piece)}
-                        {piece.channelName ? ` — ${piece.channelName}` : ''}
-                      </span>
-                      <span>
-                        <span className="badge">
-                          {STATUS_LABEL[statusByPieceId.get(piece.id) ?? 'claimed'] ??
-                            statusByPieceId.get(piece.id) ??
-                            'Claimed'}
-                        </span>{' '}
-                        <Link href={`/pieces/${piece.id}`}>Open</Link>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+          <div className="recent-briefs-list">
+            {editorialOutput.map((output) => (
+              <Link key={output.briefId} href={`/output/${output.briefId}`} className="recent-brief-row">
+                <span className="recent-brief-icon">
+                  <DocIcon />
+                </span>
+                <span className="recent-brief-main">
+                  <div className="recent-brief-title">{output.title}</div>
+                  <div className="recent-brief-meta">
+                    <span>{formatOutputDate(output.createdAt)}</span>
+                    <span className="dot" />
+                    <span>
+                      {output.articleCount} article{output.articleCount === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                </span>
+              </Link>
             ))}
           </div>
         )}

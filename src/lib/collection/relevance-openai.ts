@@ -1,5 +1,5 @@
 import { generateObject } from 'ai'
-import { google } from '@ai-sdk/google'
+import { openai } from '@ai-sdk/openai'
 import { z } from 'zod'
 import type { RelevanceCandidate } from './relevance-types'
 
@@ -36,7 +36,7 @@ export async function runRelevanceCheck(input: {
   ].join('\n')
 
   const { object } = await generateObject({
-    model: google('gemini-flash-lite-latest'),
+    model: openai('gpt-4.1-mini'),
     schema: relevanceSchema,
     system: SYSTEM_PROMPT,
     prompt,

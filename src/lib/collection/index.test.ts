@@ -3,7 +3,7 @@ import type { BriefItem, EditorialBrief, Provider, User } from '@/payload-types'
 import * as newsHqAdapter from '@/lib/provider-client/adapters/news-hq-adapter'
 import * as newsHqFilters from '@/lib/provider-client/news-hq-filters'
 import * as relevance from './relevance'
-import { collectForBriefItem } from './index'
+import { collectForBriefItem, groupWirePrioritiesForQuery } from './index'
 
 afterEach(() => {
   ;(newsHqAdapter.fetchNewsHqProvider as any).mockRestore?.()
@@ -32,7 +32,7 @@ const provider = {
 function fakePayload({
   providers = [provider],
   channelConfigs = [] as any[],
-  settings = { agencies: ['AFP'], priorities: ['1', '2', '3', '4'], defaultLang: 'en', limit: 20 },
+  settings = { wirePriorities: [{ agency: 'AFP', priority: '1' }], defaultLang: 'en', limit: 20 },
   existingCollected = [] as any[],
 } = {}) {
   const created: any[] = []
@@ -146,5 +146,30 @@ describe('collectForBriefItem', () => {
 
     expect(result.status).toBe('error')
     expect(updated[0]).toMatchObject({ id: 'item-1', data: { status: 'error' } })
+  })
+})
+
+describe('groupWirePrioritiesForQuery', () => {
+  test('empty config returns one unrestricted group', () => {
+    expect(groupWirePrioritiesForQuery([])).toEqual([{ agencies: [] }])
+  })
+
+  test('wires sharing a priority are grouped into one query', () => {
+    const groups = groupWirePrioritiesForQuery([
+      { agency: 'Reuters', priority: '1' },
+      { agency: 'AP', priority: '1' },
+      { agency: 'AFP', priority: '2' },
+    ])
+    expect(groups).toHaveLength(2)
+    expect(groups).toContainEqual({ agencies: ['Reuters', 'AP'], priority: '1' })
+    expect(groups).toContainEqual({ agencies: ['AFP'], priority: '2' })
+  })
+
+  test('wires without a priority are excluded, not grouped as unrestricted', () => {
+    const groups = groupWirePrioritiesForQuery([
+      { agency: 'Reuters', priority: '1' },
+      { agency: 'AP', priority: '' },
+    ])
+    expect(groups).toEqual([{ agencies: ['Reuters'], priority: '1' }])
   })
 })

@@ -52,6 +52,21 @@ export const GeneratedPieces: CollectionConfig = {
       type: 'text',
       admin: { description: 'The id createArticle() returned from trt-global-cms-prod. Unused while CMS publish is stubbed.' },
     },
+    {
+      name: 'coverImageDataUrl',
+      type: 'text',
+      // Payload's text fields default to a 40k-char maxLength (config.defaultMaxTextLength) -
+      // a base64 data: URI for a single 1024x1024 image is ~2-3M chars, so that default rejects
+      // every real image. 10M chars (~7.5MB binary) covers normal image sizes with headroom
+      // under MongoDB's 16MB document limit.
+      maxLength: 10_000_000,
+      admin: {
+        description:
+          'data: URI of the generated cover image (see src/lib/cover-image) - placeholder storage via OpenAI image generation until a real asset pipeline / Atlas AI replaces it.',
+      },
+    },
+    { name: 'coverImagePrompt', type: 'text' },
+    { name: 'coverImageGeneratedAt', type: 'date' },
   ],
   timestamps: true,
 }

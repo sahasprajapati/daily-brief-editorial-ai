@@ -36,3 +36,35 @@ export async function getSwitcherDesks(user: User): Promise<Desk[]> {
   if (leadOfDesks.length > 0) return channels.filter((channel) => leadOfDesks.includes(channel.id))
   return channels
 }
+
+export interface UploadChannelResolution {
+  channel: Desk | null
+  /** Set (with `channel` null) when upload is currently unavailable — no channel selected,
+   *  or the user isn't a lead on the selected one. Shown as-is in the upload UI. */
+  reason: string | null
+}
+
+/** Resolves whether the given user can upload a brief for the currently selected channel -
+ *  shared by every upload entry point (dashboard button, briefs list) so they agree on the
+ *  same disabled-state messaging instead of each re-deriving it. */
+export async function resolveUploadChannel(
+  user: User,
+  selectedChannel: string,
+): Promise<UploadChannelResolution> {
+  if (selectedChannel === 'all') {
+    return {
+      channel: null,
+      reason: 'Select a specific channel in the header first — briefs are uploaded per channel.',
+    }
+  }
+  const desks = await getLeadDesks(user)
+  const channel = desks.find((desk) => desk.id === selectedChannel)
+  if (!channel) {
+    return {
+      channel: null,
+      reason:
+        'You are not a lead on this channel, so upload is disabled. Ask an admin to add this channel to your lead desks, or switch to a channel you lead.',
+    }
+  }
+  return { channel, reason: null }
+}

@@ -6,24 +6,24 @@ import {
 } from './assignment-status'
 
 describe('statusAfterVerdict', () => {
-  test('goodToGo → awaitingApproval', () => {
+  test('goodToGo → awaitingApproval (pending the editor\'s explicit confirm)', () => {
     expect(statusAfterVerdict('goodToGo')).toBe('awaitingApproval')
   })
-  test('needsAttention / rejected → inProgress', () => {
+  test('needsAttention / rejected → back to the editor, no manager involved', () => {
     expect(statusAfterVerdict('needsAttention')).toBe('inProgress')
     expect(statusAfterVerdict('rejected')).toBe('inProgress')
   })
 })
 
 describe('stepFromStatus', () => {
-  test('maps statuses to stepper steps', () => {
+  test('maps statuses to the editor\'s stepper steps', () => {
     expect(stepFromStatus('claimed')).toBe('edit')
     expect(stepFromStatus('inProgress')).toBe('edit')
     expect(stepFromStatus('inQA')).toBe('qa')
     expect(stepFromStatus('verdictReached')).toBe('qa')
-    expect(stepFromStatus('awaitingApproval')).toBe('approve')
-    expect(stepFromStatus('approved')).toBe('publish')
-    expect(stepFromStatus('published')).toBe('publish')
+    expect(stepFromStatus('awaitingApproval')).toBe('manager')
+    expect(stepFromStatus('approved')).toBe('manager')
+    expect(stepFromStatus('published')).toBe('manager')
   })
 })
 

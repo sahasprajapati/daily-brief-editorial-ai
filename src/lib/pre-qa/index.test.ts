@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from 'bun:test'
-import * as gemini from './gemini'
+import * as openai from './openai'
 import { runPreQaChecks } from './index'
 
 const naturalnessResult = {
@@ -11,7 +11,7 @@ const naturalnessResult = {
 
 describe('runPreQaChecks', () => {
   test('combines banned-term flags with the naturalness check result', async () => {
-    spyOn(gemini, 'runNaturalnessCheck').mockResolvedValue(naturalnessResult)
+    spyOn(openai, 'runNaturalnessCheck').mockResolvedValue(naturalnessResult)
 
     const blocks = [{ blockId: 'b1', type: 'paragraph' as const, text: 'The flood continued today.' }]
     const result = await runPreQaChecks(blocks, ['flood'])
@@ -24,7 +24,7 @@ describe('runPreQaChecks', () => {
   })
 
   test('returns no flags when no banned terms match', async () => {
-    spyOn(gemini, 'runNaturalnessCheck').mockResolvedValue(naturalnessResult)
+    spyOn(openai, 'runNaturalnessCheck').mockResolvedValue(naturalnessResult)
 
     const blocks = [{ blockId: 'b1', type: 'paragraph' as const, text: 'Clean text.' }]
     const result = await runPreQaChecks(blocks, [])
@@ -33,7 +33,7 @@ describe('runPreQaChecks', () => {
   })
 
   test('degrades gracefully when the naturalness check throws', async () => {
-    spyOn(gemini, 'runNaturalnessCheck').mockRejectedValue(new Error('no api key'))
+    spyOn(openai, 'runNaturalnessCheck').mockRejectedValue(new Error('no api key'))
 
     const blocks = [{ blockId: 'b1', type: 'paragraph' as const, text: 'The flood continued today.' }]
     const result = await runPreQaChecks(blocks, ['flood'])
