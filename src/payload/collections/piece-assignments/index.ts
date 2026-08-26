@@ -42,6 +42,16 @@ export const PieceAssignments: CollectionConfig = {
       ],
     },
     { name: 'claimedAt', type: 'date', required: true, defaultValue: () => new Date().toISOString() },
+    {
+      name: 'managerNote',
+      type: 'textarea',
+      admin: {
+        description:
+          'Set when a manager sends a piece back — shown to the editor as the reason. Latest note only, overwritten on the next send-back.',
+      },
+    },
+    { name: 'managerNoteBy', type: 'relationship', relationTo: 'users' },
+    { name: 'managerNoteAt', type: 'date' },
   ],
   timestamps: true,
 }

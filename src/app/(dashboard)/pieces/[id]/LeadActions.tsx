@@ -5,8 +5,16 @@ import type { AssignmentStatus } from '@/lib/pieces/assignment-status'
 import { approvePiece, publishPiece, sendBackPiece } from './actions'
 
 type ActionState = { error: string | null }
+type SendBackState = { error: string | null }
 
 const initialState: ActionState = { error: null }
+const initialSendBackState: SendBackState = { error: null }
+
+const VERDICT_LABEL: Record<string, string> = {
+  goodToGo: 'Good to go',
+  needsAttention: 'Needs attention',
+  rejected: 'Rejected',
+}
 
 export function LeadActions({
   pieceId,
@@ -14,20 +22,24 @@ export function LeadActions({
   canLead,
   publishedAt,
   cmsPackageId,
+  confirmedVerdict,
 }: {
   pieceId: string
   status: AssignmentStatus
   canLead: boolean
   publishedAt?: string | null
   cmsPackageId?: string | null
+  /** The verdict the editor confirmed via VerdictForm — every verdict routes here for
+   *  approval now, not just goodToGo, so the manager needs to see which one it was. */
+  confirmedVerdict?: 'goodToGo' | 'needsAttention' | 'rejected' | null
 }) {
   const [approveState, approveAction, approvePending] = useActionState<ActionState, FormData>(
     () => approvePiece(pieceId),
     initialState,
   )
-  const [sendBackState, sendBackAction, sendBackPending] = useActionState<ActionState, FormData>(
-    () => sendBackPiece(pieceId),
-    initialState,
+  const [sendBackState, sendBackAction, sendBackPending] = useActionState<SendBackState, FormData>(
+    async (_prev, formData) => sendBackPiece(pieceId, (formData.get('note') as string) ?? ''),
+    initialSendBackState,
   )
   const [publishState, publishAction, publishPending] = useActionState<ActionState, FormData>(
     () => publishPiece(pieceId),
@@ -61,25 +73,51 @@ export function LeadActions({
       <div className="card">
         <h2>Approve</h2>
         <p className="subtitle" style={{ marginTop: 0 }}>
-          QA marked this good to go. Approve to unlock publish, or send back for rework.
+          {confirmedVerdict ? (
+            <>
+              Editor confirmed QA verdict:{' '}
+              <span className={`verdict-badge verdict-badge-${confirmedVerdict}`}>
+                {VERDICT_LABEL[confirmedVerdict]}
+              </span>
+              . Approve to unlock publish, or send back for rework.
+            </>
+          ) : (
+            'Approve to unlock publish, or send back for rework.'
+          )}
         </p>
-        <div className="form-actions">
+        <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
           <form action={approveAction}>
             <button type="submit" className="btn-primary" disabled={approvePending}>
               {approvePending ? 'Approving…' : 'Approve'}
             </button>
           </form>
-          <form action={sendBackAction}>
-            <button type="submit" className="btn-secondary" disabled={sendBackPending}>
-              {sendBackPending ? 'Sending back…' : 'Send back'}
-            </button>
-          </form>
         </div>
-        {(approveState.error || sendBackState.error) && (
+        {approveState.error && (
           <div className="banner banner-error" style={{ marginTop: '0.75rem' }}>
-            {approveState.error || sendBackState.error}
+            {approveState.error}
           </div>
         )}
+
+        <form action={sendBackAction} style={{ marginTop: '1rem' }}>
+          <label htmlFor="note">Send back — reason (required)</label>
+          <textarea
+            id="note"
+            name="note"
+            required
+            rows={3}
+            placeholder="What needs to change before this can be approved?"
+          />
+          <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
+            <button type="submit" className="btn-secondary" disabled={sendBackPending}>
+              {sendBackPending ? 'Sending back…' : 'Send back to editor'}
+            </button>
+          </div>
+          {sendBackState.error && (
+            <div className="banner banner-error" style={{ marginTop: '0.75rem' }}>
+              {sendBackState.error}
+            </div>
+          )}
+        </form>
       </div>
     )
   }

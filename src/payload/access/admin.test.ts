@@ -7,6 +7,8 @@ import {
   leadOfDeskBriefItemCreate,
   leadOfDeskBriefItemUpdate,
   leadOfDeskBriefUpdate,
+  leadOfDeskChannelConfigCreate,
+  leadOfDeskChannelConfigUpdate,
   leadOfDeskCollectedItemCreate,
   leadOfDeskFileCreate,
   leadOfDeskPieceCreate,
@@ -252,6 +254,66 @@ describe('leadOfDeskCollectedItemCreate', () => {
     const lead = { id: 'lead-1', role: 'editor', leadOfDesks: ['ch-1'] } as User
     const req = { user: lead, payload: { findByID: fakeFindByIDBriefWithBriefChannel('ch-1') } } as unknown as PayloadRequest
     expect(await leadOfDeskCollectedItemCreate({ req, data: {} } as any)).toBe(false)
+  })
+})
+
+function fakeFindByIDConfigChannel(channel: string) {
+  return async () => ({ id: 'config-1', channel } as any)
+}
+
+describe('leadOfDeskChannelConfigCreate', () => {
+  test('admin can create for any channel', () => {
+    const req = { user: admin } as PayloadRequest
+    expect(leadOfDeskChannelConfigCreate({ req, data: { channel: 'ch-99' } } as any)).toBe(true)
+  })
+
+  test('lead of the target channel can create', () => {
+    const lead = { id: 'lead-1', role: 'editor', leadOfDesks: ['ch-1'] } as User
+    const req = { user: lead } as PayloadRequest
+    expect(leadOfDeskChannelConfigCreate({ req, data: { channel: 'ch-1' } } as any)).toBe(true)
+  })
+
+  test('non-lead of the target channel cannot create', () => {
+    const editor2 = { id: 'editor-2', role: 'editor', leadOfDesks: ['ch-2'] } as User
+    const req = { user: editor2 } as PayloadRequest
+    expect(leadOfDeskChannelConfigCreate({ req, data: { channel: 'ch-1' } } as any)).toBe(false)
+  })
+})
+
+describe('leadOfDeskChannelConfigUpdate', () => {
+  test('admin can update any channel config', async () => {
+    const req = {
+      user: admin,
+      payload: { findByID: fakeFindByIDConfigChannel('ch-1') },
+    } as unknown as PayloadRequest
+    expect(await leadOfDeskChannelConfigUpdate({ req, id: 'config-1' } as any)).toBe(true)
+  })
+
+  test('lead of the config channel can update', async () => {
+    const lead = { id: 'lead-1', role: 'editor', leadOfDesks: ['ch-1'] } as User
+    const req = {
+      user: lead,
+      payload: { findByID: fakeFindByIDConfigChannel('ch-1') },
+    } as unknown as PayloadRequest
+    expect(await leadOfDeskChannelConfigUpdate({ req, id: 'config-1' } as any)).toBe(true)
+  })
+
+  test('non-lead cannot update', async () => {
+    const editor2 = { id: 'editor-2', role: 'editor', leadOfDesks: ['ch-2'] } as User
+    const req = {
+      user: editor2,
+      payload: { findByID: fakeFindByIDConfigChannel('ch-1') },
+    } as unknown as PayloadRequest
+    expect(await leadOfDeskChannelConfigUpdate({ req, id: 'config-1' } as any)).toBe(false)
+  })
+
+  test('missing id is denied for a non-admin', async () => {
+    const lead = { id: 'lead-1', role: 'editor', leadOfDesks: ['ch-1'] } as User
+    const req = {
+      user: lead,
+      payload: { findByID: fakeFindByIDConfigChannel('ch-1') },
+    } as unknown as PayloadRequest
+    expect(await leadOfDeskChannelConfigUpdate({ req } as any)).toBe(false)
   })
 })
 

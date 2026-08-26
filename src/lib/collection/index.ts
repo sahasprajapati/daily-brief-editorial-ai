@@ -10,7 +10,7 @@ import {
   filterAndRankNewsHqHits,
   newsHqDateFrom,
 } from '@/lib/provider-client/news-hq-query'
-import { resolveNewsHqBaseUrl, toNewsHqLang } from '@/lib/provider-client/news-hq-url'
+import { NEWS_HQ_STUB_BASE_URL, resolveNewsHqBaseUrl, toNewsHqLang } from '@/lib/provider-client/news-hq-url'
 import { filterRelevantNewsHqHits } from './relevance'
 
 /** Hard cap for sources shown per topic after ranking + LLM. */
@@ -29,7 +29,14 @@ async function ensureNewsHqProvider(payload: Payload): Promise<Provider> {
     limit: 1,
     overrideAccess: true,
   })
-  const baseUrl = resolveNewsHqBaseUrl()
+  let baseUrl: string
+  try {
+    baseUrl = resolveNewsHqBaseUrl()
+  } catch {
+    // NEWS_HQ_SEARCH_BASE_URL not configured (e.g. local dev without TRT VPN/creds) —
+    // fall back to the stub marker so collection still runs against canned wire items.
+    baseUrl = NEWS_HQ_STUB_BASE_URL
+  }
   if (existing.docs[0]) {
     if (existing.docs[0].baseUrl !== baseUrl || !existing.docs[0].enabled) {
       return payload.update({
@@ -54,9 +61,36 @@ async function ensureNewsHqProvider(payload: Payload): Promise<Provider> {
   })
 }
 
+export interface WirePriority {
+  agency: string
+  priority: string
+}
+
+/** One NewsHQ query per distinct priority value among the configured wires - the search API
+ *  filters by a single agency list + a single priority list per request, it has no concept of
+ *  "this agency at this priority, that agency at that one", so a genuine per-wire mapping has
+ *  to be split into one request per priority group. A wire with no priority assigned is simply
+ *  left out of every group (not searched); if nothing is configured at all, one unrestricted
+ *  group is returned - same as the old "leave every agency unchecked" behavior. */
+export function groupWirePrioritiesForQuery(
+  wirePriorities: WirePriority[],
+): Array<{ agencies: string[]; priority?: string }> {
+  if (wirePriorities.length === 0) return [{ agencies: [] }]
+
+  const byPriority = new Map<string, string[]>()
+  for (const wire of wirePriorities) {
+    if (!wire.agency || !wire.priority) continue
+    const agencies = byPriority.get(wire.priority) ?? []
+    agencies.push(wire.agency)
+    byPriority.set(wire.priority, agencies)
+  }
+  if (byPriority.size === 0) return [{ agencies: [] }]
+
+  return Array.from(byPriority.entries()).map(([priority, agencies]) => ({ agencies, priority }))
+}
+
 async function loadNewsHqSearchDefaults(payload: Payload): Promise<{
-  agencies: string[]
-  priorities: string
+  wirePriorities: WirePriority[]
   defaultLang: string
   keepLimit: number
   fetchLimit: number
@@ -67,8 +101,9 @@ async function loadNewsHqSearchDefaults(payload: Payload): Promise<{
       ? Math.min(settings.limit, NEWSHQ_RESULT_LIMIT)
       : NEWSHQ_RESULT_LIMIT
   return {
-    agencies: settings.agencies ?? [],
-    priorities: (settings.priorities?.length ? settings.priorities : ['1', '2', '3', '4']).join(','),
+    wirePriorities: (settings.wirePriorities ?? []).filter(
+      (w): w is WirePriority => Boolean(w.agency && w.priority),
+    ),
     defaultLang: settings.defaultLang || 'en',
     keepLimit,
     fetchLimit: NEWSHQ_FETCH_LIMIT,
@@ -99,13 +134,18 @@ export async function collectForBriefItem(
     defaults.defaultLang,
   )
 
-  let agencies = defaults.agencies
-  if (agencies.length === 0) {
+  const wireGroups = groupWirePrioritiesForQuery(defaults.wirePriorities)
+
+  // The unrestricted group (no wires configured, or none with a priority set) still needs an
+  // explicit agency list - resolve it from live filters the same way the old agencies-only
+  // default did, so an empty config doesn't silently mean "every agency NewsHQ has".
+  let fallbackAgencies: string[] = []
+  if (wireGroups.some((group) => group.agencies.length === 0)) {
     try {
       const filters = await fetchNewsHqFilters()
-      agencies = filters.providersByLanguage[lang] ?? filters.agencies
+      fallbackAgencies = filters.providersByLanguage[lang] ?? filters.agencies
     } catch {
-      agencies = []
+      fallbackAgencies = []
     }
   }
 
@@ -113,34 +153,37 @@ export async function collectForBriefItem(
   const rankTerms = buildNewsHqRankTerms(briefItem.topic, keywordLayers, briefItem.keywords ?? [])
   const exclusions = (briefItem.exclusions ?? []).map((e) => e.trim()).filter(Boolean)
 
-  const providerConfig: NewsHqProviderConfig = {
-    type: 'newsHq',
-    id: providerDoc.id,
-    name: providerDoc.name,
-    baseUrl: providerDoc.baseUrl,
-    agencies: agencies.length > 0 ? agencies : undefined,
-  }
-
-  // Multilayer search: query each top keyword separately (limit 50), merge + dedupe,
-  // then rank locally and LLM-filter down to keepLimit.
+  // Multilayer search: query each top keyword separately (limit 50) for each wire-priority
+  // group, merge + dedupe, then rank locally and LLM-filter down to keepLimit.
   const layers = keywordLayers.length > 0 ? keywordLayers : [undefined]
   let items: Awaited<ReturnType<typeof fetchNewsHqProvider>> = []
   try {
     const seen = new Set<string>()
-    for (const layerKeyword of layers) {
-      const batch = await fetchNewsHqProvider(providerConfig, {
-        channelId: brief.channel,
-        language: lang,
-        keywordsIncluded: layerKeyword ? [layerKeyword] : undefined,
-        keywordsExcluded: exclusions.length > 0 ? exclusions : undefined,
-        priority: defaults.priorities,
-        dateFrom: newsHqDateFrom(2),
-        limit: defaults.fetchLimit,
-      })
-      for (const item of batch) {
-        if (seen.has(item.providerItemId)) continue
-        seen.add(item.providerItemId)
-        items.push(item)
+    for (const group of wireGroups) {
+      const groupAgencies = group.agencies.length > 0 ? group.agencies : fallbackAgencies
+      const providerConfig: NewsHqProviderConfig = {
+        type: 'newsHq',
+        id: providerDoc.id,
+        name: providerDoc.name,
+        baseUrl: providerDoc.baseUrl,
+        agencies: groupAgencies.length > 0 ? groupAgencies : undefined,
+      }
+      for (const layerKeyword of layers) {
+        const batch = await fetchNewsHqProvider(providerConfig, {
+          channelId: brief.channel,
+          language: lang,
+          searchQuery: briefItem.topic,
+          keywordsIncluded: layerKeyword ? [layerKeyword] : undefined,
+          keywordsExcluded: exclusions.length > 0 ? exclusions : undefined,
+          priority: group.priority,
+          dateFrom: newsHqDateFrom(2),
+          limit: defaults.fetchLimit,
+        })
+        for (const item of batch) {
+          if (seen.has(item.providerItemId)) continue
+          seen.add(item.providerItemId)
+          items.push(item)
+        }
       }
     }
   } catch (err) {

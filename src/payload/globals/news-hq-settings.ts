@@ -12,20 +12,20 @@ export const NewsHqSettings: GlobalConfig = {
   },
   fields: [
     {
-      name: 'agencies',
-      type: 'text',
-      hasMany: true,
+      // One row per wire the editor has assigned a priority to - a wire with no row is not
+      // searched at all, *unless the array is empty entirely*, which falls back to searching
+      // every agency at every priority (loadNewsHqSearchDefaults/collectForBriefItem). See
+      // NewsHqSettingsForm - the "Save wire priorities" button writes just this field.
+      name: 'wirePriorities',
+      type: 'array',
       admin: {
         description:
-          'Wire agencies to include (values from NewsHQ /filters). Empty = all agencies for the search language.',
+          'Per-wire priority filter (values from NewsHQ /filters). A wire not listed here is not searched, unless the list is empty entirely - then every agency/priority is searched unrestricted.',
       },
-    },
-    {
-      name: 'priorities',
-      type: 'text',
-      hasMany: true,
-      defaultValue: ['1', '2', '3', '4'],
-      admin: { description: 'NewsHQ priority filter values, e.g. 1,2,3,4.' },
+      fields: [
+        { name: 'agency', type: 'text', required: true },
+        { name: 'priority', type: 'text', required: true },
+      ],
     },
     {
       name: 'defaultLang',

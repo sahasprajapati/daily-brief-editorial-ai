@@ -1,12 +1,7 @@
 import Link from 'next/link'
+import { ArticleGrid, type ArticleRow } from '../../ArticleGrid'
 
-export type BriefArticleRow = {
-  id: string
-  headline: string
-  topic?: string
-  attributionString?: string
-  createdAt?: string
-}
+export type BriefArticleRow = ArticleRow
 
 export function BriefArticlesPanel({
   briefId,
@@ -33,27 +28,7 @@ export function BriefArticlesPanel({
     <div className="card">
       <h2>Articles</h2>
       <p className="subtitle">Generated pieces for this brief.</p>
-      <ul className="nhq-source-list">
-        {articles.map((article) => (
-          <li key={article.id} className="nhq-source-row">
-            <div className="nhq-source-main">
-              <div className="nhq-source-headline">{article.headline}</div>
-              <div className="nhq-source-meta" style={{ marginTop: '0.35rem' }}>
-                {article.topic && <span>{article.topic}</span>}
-                {article.attributionString && <span>· {article.attributionString}</span>}
-                {article.createdAt && (
-                  <span>· {new Date(article.createdAt).toLocaleString()}</span>
-                )}
-              </div>
-            </div>
-            <div className="nhq-source-actions">
-              <Link href={`/pieces/${article.id}`} className="btn-primary">
-                View article
-              </Link>
-            </div>
-          </li>
-        ))}
-      </ul>
+      <ArticleGrid articles={articles} />
     </div>
   )
 }

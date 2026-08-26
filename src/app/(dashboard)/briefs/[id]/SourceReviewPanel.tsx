@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { setSourceReviewStatus } from './actions'
+import { badgeColor, getAgencyLogo, initials } from '@/app/(dashboard)/channel-meta'
 
 export type SourceHit = {
   id: string
@@ -75,7 +76,7 @@ export function TopicSourceHits({
             <li key={hit.id} className={`nhq-source-row ${priorityClass(hit.priority)}`}>
               <div className="nhq-source-main">
                 <div className="nhq-source-meta">
-                  <span>{hit.agency || 'NewsHQ'}</span>
+                  <AgencyBadge name={hit.agency || 'NewsHQ'} />
                   {hit.language && <span>· {hit.language}</span>}
                   {hit.publishedAt && <span>· {formatTimeToNow(hit.publishedAt)}</span>}
                 </div>
@@ -110,5 +111,22 @@ export function TopicSourceHits({
         })}
       </ul>
     </div>
+  )
+}
+
+function AgencyBadge({ name }: { name: string }) {
+  const logo = getAgencyLogo(name)
+  if (logo) {
+    return (
+      <span className="agency-badge agency-badge-logo">
+        {/* eslint-disable-next-line @next/next/no-img-element -- small static local SVG */}
+        <img src={logo} alt={name} title={name} />
+      </span>
+    )
+  }
+  return (
+    <span className="agency-badge" style={{ background: badgeColor(name) }}>
+      {initials(name)}
+    </span>
   )
 }

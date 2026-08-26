@@ -4,7 +4,6 @@ import configPromise from '@payload-config'
 import { requireUser } from '@/payload/auth/session'
 import { checkIsAdmin } from '@/payload/access/admin'
 import { fetchNewsHqFilters } from '@/lib/provider-client/news-hq-filters'
-import { resolveNewsHqBaseUrl } from '@/lib/provider-client/news-hq-url'
 import { NewsHqSettingsForm } from './NewsHqSettingsForm'
 
 export default async function NewsHqSettingsPage() {
@@ -19,7 +18,6 @@ export default async function NewsHqSettingsPage() {
     agencies: ['Reuters', 'AnadoluAgency', 'AFP', 'AP', 'TRTHaber'],
     priorities: ['1', '2', '3', '4', '5', '6'],
   }
-  let filtersError: string | null = null
   try {
     const live = await fetchNewsHqFilters()
     filters = {
@@ -28,37 +26,31 @@ export default async function NewsHqSettingsPage() {
       priorities: live.priorities.length ? live.priorities : filters.priorities,
     }
   } catch (err) {
-    filtersError = err instanceof Error ? err.message : 'Could not load NewsHQ filters.'
+    // Falls back to the hardcoded lists above - this is a routine "provider unreachable in
+    // local dev" case, not something an editor/lead needs surfaced in the UI.
+    console.warn('[settings/newshq] falling back to default NewsHQ filter options:', err)
   }
 
-  let baseUrl = ''
-  try {
-    baseUrl = resolveNewsHqBaseUrl()
-  } catch {
-    baseUrl = ''
-  }
+  const wirePriorities = (settings.wirePriorities ?? []).filter(
+    (wire): wire is { agency: string; priority: string; id?: string | null } =>
+      Boolean(wire.agency && wire.priority),
+  )
+  // A wire already configured with a priority stays visible even if it's since dropped out of
+  // the live NewsHQ filter list - otherwise saving would silently drop it.
+  const savedAgencies = wirePriorities.map((wire) => wire.agency)
+  const agencies = [...new Set([...filters.agencies, ...savedAgencies])]
 
   return (
     <div className="page page-wide">
       <h1>NewsHQ settings</h1>
-      <p className="subtitle">
-        Global search defaults for brief source collection. Option lists come from{' '}
-        <code>/api/v1/news/filters</code>.
-      </p>
-      {filtersError && (
-        <div className="banner banner-warn" style={{ marginBottom: '1rem' }}>
-          Live filters unavailable ({filtersError}). Showing fallback options.
-        </div>
-      )}
+      <p className="subtitle">Wire sources and search defaults used when collecting brief items.</p>
       <NewsHqSettingsForm
-        agencies={filters.agencies}
+        agencies={agencies}
         priorities={filters.priorities}
         languages={filters.languages}
-        selectedAgencies={settings.agencies ?? []}
-        selectedPriorities={settings.priorities ?? ['1', '2', '3', '4']}
-        defaultLang={settings.defaultLang || 'en'}
+        wirePriorities={wirePriorities}
+        language={settings.defaultLang || 'en'}
         limit={settings.limit ?? 20}
-        baseUrl={baseUrl}
       />
     </div>
   )

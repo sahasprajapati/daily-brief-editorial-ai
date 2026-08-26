@@ -1,13 +1,13 @@
 'use client'
 
-import { useActionState, useMemo, useState } from 'react'
-import { BlockEditor } from 'payload-richtext-tiptap'
-// Do NOT import full styles.css (contains Tailwind preflight that breaks app UI).
-import '@/vendor/payload-richtext-tiptap/styles.utilities.css'
-import '@/vendor/payload-richtext-tiptap/article-custom.css'
+import { useActionState, useState } from 'react'
 import type { BlockDiffEntry, ContentBlock } from '@/lib/content-diff'
-import { contentBlocksToTiptap, tiptapToContentBlocks, type TiptapDoc } from '@/lib/content-diff/tiptap'
 import { saveBody } from './actions'
+
+// TEMP: payload-richtext-tiptap requires a paid TipTap Pro registry token
+// (TIPTAP_AUTH_TOKEN) that isn't available in this dev environment. Swapped
+// in a plain-textarea block editor so the rest of the app is workable.
+// Restore the real BlockEditor once TIPTAP_AUTH_TOKEN is set — see README.
 
 type SaveState = { error: string | null }
 
@@ -24,7 +24,6 @@ export function ReviewForm({
 }) {
   const [showDiff, setShowDiff] = useState(false)
   const [blocks, setBlocks] = useState(initialBlocks)
-  const initialDoc = useMemo(() => contentBlocksToTiptap(initialBlocks), [initialBlocks])
   const [state, formAction, isPending] = useActionState<SaveState, FormData>(
     () => saveBody(pieceId, blocks),
     initialState,
@@ -53,23 +52,23 @@ export function ReviewForm({
       ) : (
         <form action={formAction} className="tiptap-review-form">
           <p className="subtitle" style={{ marginTop: 0 }}>
-            Same TipTap editor as cms-prod. Formatting is preserved in the editor; QA still anchors on
-            plain-text blocks.
+            Plain-text block editor (TipTap Pro editor disabled — no TIPTAP_AUTH_TOKEN in this
+            environment). QA still anchors on these same plain-text blocks.
           </p>
-          <div className="tiptap-review-editor">
-            <BlockEditor
-              // Package types require html+json; we only round-trip TipTap JSON.
-              content={{ html: '', json: initialDoc }}
-              hasCollab={false}
-              isEditable
-              autoFocus={false}
-              dir="ltr"
-              additionalContext={{ language: 'en', translations: {} }}
-              handleChange={(value) => {
-                const doc = (value?.json ?? value) as TiptapDoc
-                setBlocks(tiptapToContentBlocks(doc))
-              }}
-            />
+          <div className="tiptap-review-editor" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {blocks.map((block, index) => (
+              <textarea
+                key={block.blockId}
+                value={block.text}
+                onChange={(e) => {
+                  const text = e.target.value
+                  setBlocks((prev) => prev.map((b, i) => (i === index ? { ...b, text } : b)))
+                }}
+                rows={block.type === 'heading' ? 2 : 4}
+                className={block.type === 'heading' ? 'input input-heading' : 'input'}
+                style={{ width: '100%', fontFamily: 'inherit' }}
+              />
+            ))}
           </div>
           <div className="form-actions">
             <button type="submit" className="btn-primary" disabled={isPending}>

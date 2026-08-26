@@ -2,7 +2,8 @@ import type { Payload } from 'payload'
 import type { BriefItem, ChannelConfig, CollectedItem, EditorialBrief, GeneratedPiece, User } from '@/payload-types'
 import type { ContentBlock } from '@/lib/content-diff'
 import { getGuidelineText } from '@/lib/okf-ruleset'
-import { runGeneration } from './gemini'
+import { joinChannelInstructions } from '@/lib/channel-instructions'
+import { runGeneration } from './openai'
 
 /** Generate one article for a brief topic using all of that topic's collected sources. */
 export async function generatePieceForTopic(
@@ -29,6 +30,10 @@ export async function generatePieceForTopic(
     requiredContext: briefItem.requiredContext ?? '',
     bannedTerms: briefItem.bannedTerms ?? [],
     guidelineText,
+    extraWritingInstructions: joinChannelInstructions(
+      channelConfig?.majorInstructionsFileText,
+      channelConfig?.extraWritingInstructions,
+    ),
     sources: collectedItems.map((item) => ({
       headline: item.headline,
       body: item.body,

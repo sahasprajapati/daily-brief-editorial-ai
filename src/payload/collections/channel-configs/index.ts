@@ -1,5 +1,5 @@
 import type { CollectionConfig } from 'payload'
-import { adminOnly } from '../../access/admin'
+import { adminOnly, leadOfDeskChannelConfigCreate, leadOfDeskChannelConfigUpdate } from '../../access/admin'
 
 /** Operational config the collection/generation pipeline needs that neither cms-prod nor
  *  `providers` has: what language to generate in, Event Registry's language code for this
@@ -13,8 +13,8 @@ export const ChannelConfigs: CollectionConfig = {
   },
   access: {
     read: () => true,
-    create: adminOnly,
-    update: adminOnly,
+    create: leadOfDeskChannelConfigCreate,
+    update: leadOfDeskChannelConfigUpdate,
     delete: adminOnly,
   },
   fields: [
@@ -37,6 +37,47 @@ export const ChannelConfigs: CollectionConfig = {
       admin: {
         description:
           'Matches a filename under okf-ruleset/guidelines/ (without .md). Empty = no desk-specific guideline.',
+      },
+    },
+    {
+      // The channel's primary QA reference doc, uploaded as a whole (see MajorFileSlot) -
+      // text is extracted client-side at upload time, same as brief PDFs/DOCX (the original
+      // file itself is never stored - matches brief-files' "extracted text only" convention).
+      // Prepended ahead of extraQaInstructions wherever this gets joined into a prompt.
+      name: 'majorQaFileName',
+      type: 'text',
+    },
+    {
+      name: 'majorQaFileText',
+      type: 'textarea',
+    },
+    {
+      name: 'majorInstructionsFileName',
+      type: 'text',
+    },
+    {
+      name: 'majorInstructionsFileText',
+      type: 'textarea',
+    },
+    {
+      // One entry per instruction, not one blob of text - the settings UI (/settings/channel-ai)
+      // renders each as its own editable/deletable card. Joined with newlines at the point each
+      // one is injected into a prompt - see src/app/(dashboard)/pieces/[id]/actions.ts.
+      name: 'extraQaInstructions',
+      type: 'text',
+      hasMany: true,
+      admin: {
+        description:
+          'Channel-specific additions to the general okf-ruleset QA checks - the AI QA verdict judges against the general checks plus these. Does not replace the general rules.',
+      },
+    },
+    {
+      name: 'extraWritingInstructions',
+      type: 'text',
+      hasMany: true,
+      admin: {
+        description:
+          'Channel-specific additions to the general desk guideline - article generation writes against the general guideline plus these. Does not replace the general rules.',
       },
     },
   ],

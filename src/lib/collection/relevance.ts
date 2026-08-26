@@ -1,9 +1,9 @@
-import { runRelevanceCheck } from './relevance-gemini'
+import { runRelevanceCheck } from './relevance-openai'
 import type { RelevanceCandidate } from './relevance-types'
 
 export type { RelevanceCandidate } from './relevance-types'
 
-/** Ask Gemini which candidates match the topic/keywords; returns matching providerItemIds. */
+/** Ask the LLM which candidates match the topic/keywords; returns matching providerItemIds. */
 export async function filterRelevantNewsHqHits(input: {
   topic: string
   keywords: string[]

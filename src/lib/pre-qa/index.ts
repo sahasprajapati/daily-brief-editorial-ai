@@ -1,6 +1,6 @@
 import type { ContentBlock } from '@/lib/content-diff'
 import { checkNoBannedTerms, type PreQaFlag } from './no-banned-terms'
-import { runNaturalnessCheck } from './gemini'
+import { runNaturalnessCheck } from './openai'
 
 export interface PreQaResult {
   flags: PreQaFlag[]
