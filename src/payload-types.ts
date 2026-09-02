@@ -898,7 +898,7 @@ export interface NewsHqSetting {
    */
   defaultLang?: string | null;
   /**
-   * Max sources kept per topic after ranking + LLM (capped at 20). NewsHQ is queried with limit 50 across multiple keyword layers.
+   * Max sources kept per topic after ranking + LLM (capped at 10). NewsHQ is queried with limit 50 across multiple keyword layers.
    */
   limit?: number | null;
   updatedAt?: string | null;

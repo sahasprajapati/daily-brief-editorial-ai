@@ -45,6 +45,10 @@ GENERAL DESK GUIDELINE:
 ${input.guidelineText ?? 'None provided.'}
 ${input.extraWritingInstructions ? `\nCHANNEL-SPECIFIC ADDITIONS (supplements the general guideline above, does not override story-specific guidance):\n${input.extraWritingInstructions}\n` : ''}
 WRITING STANDARDS:
+- Length: at least 600 words across the paragraph blocks combined (headline excluded). Reach
+  it through real reporting depth - background, context, stakeholder reactions, what happens
+  next - not padding or repetition. Thin single-source coverage is a signal to draw out more
+  from the sources' context, not an excuse to fall short.
 - Open inside the story's key fact, not scene-setting.
 - Vary sentence length. No paragraph over four sentences.
 - Never use these AI-tell openings/transitions: "Imagine...", "Picture this...", "It's not just X

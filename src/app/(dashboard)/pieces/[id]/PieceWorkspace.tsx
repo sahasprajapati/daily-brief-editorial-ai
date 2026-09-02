@@ -18,7 +18,7 @@ function autoGrow(el: HTMLTextAreaElement | null) {
 }
 
 type SubmitState = { error: string | null; result: QaVerdictResult | null }
-type ImageState = { error: string | null; dataUrl: string | null }
+type ImageState = { error: string | null; dataUrl: string | null; prompt: string | null }
 type ConfirmState = { error: string | null; confirmed: boolean }
 
 const initialSubmitState: SubmitState = { error: null, result: null }
@@ -74,9 +74,12 @@ export function PieceWorkspace({
     async () => {
       const outcome = await generateCoverImageForPiece(pieceId, prompt)
       if (outcome.dataUrl) setCoverImageUrl(outcome.dataUrl)
+      // Reflect the composed prompt (editor's text + base style directive) back into the box —
+      // it's what was actually sent and saved, not just what was typed before generating.
+      if (outcome.prompt) setPrompt(outcome.prompt)
       return outcome
     },
-    { error: null, dataUrl: initialCoverImageUrl },
+    { error: null, dataUrl: initialCoverImageUrl, prompt: null },
   )
 
   const [confirmState, confirmAction, isConfirming] = useActionState<ConfirmState, FormData>(

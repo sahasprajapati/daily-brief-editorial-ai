@@ -14,11 +14,11 @@ import { NEWS_HQ_STUB_BASE_URL, resolveNewsHqBaseUrl, toNewsHqLang } from '@/lib
 import { filterRelevantNewsHqHits } from './relevance'
 
 /** Hard cap for sources shown per topic after ranking + LLM. */
-export const NEWSHQ_RESULT_LIMIT = 20
+export const NEWSHQ_RESULT_LIMIT = 10
 /** How many wires to pull from NewsHQ per keyword layer before filtering. */
 export const NEWSHQ_FETCH_LIMIT = 50
 /** Max candidates sent to the LLM relevance judge. */
-export const NEWSHQ_LLM_SHORTLIST = 30
+export const NEWSHQ_LLM_SHORTLIST = 20
 /** Separate NewsHQ queries for the top N ranked keywords, then merge. */
 export const NEWSHQ_SEARCH_LAYERS = 3
 

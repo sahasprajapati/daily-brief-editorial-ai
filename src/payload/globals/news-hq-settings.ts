@@ -36,10 +36,10 @@ export const NewsHqSettings: GlobalConfig = {
     {
       name: 'limit',
       type: 'number',
-      defaultValue: 20,
+      defaultValue: 10,
       admin: {
         description:
-          'Max sources kept per topic after ranking + LLM (capped at 20). NewsHQ is queried with limit 50 across multiple keyword layers.',
+          'Max sources kept per topic after ranking + LLM (capped at 10). NewsHQ is queried with limit 50 across multiple keyword layers.',
       },
     },
   ],
