@@ -4,7 +4,9 @@ import type { GeneratedCoverImage } from './types'
 export type { GeneratedCoverImage } from './types'
 
 const STYLE_SUFFIX =
-  'Photojournalistic editorial news cover image, wide shot, realistic, no text or logos overlaid on the image.'
+  'Photojournalistic editorial news cover image, wide landscape orientation sized for a website ' +
+  'article header / hero banner - never square or portrait unless explicitly requested above - ' +
+  'realistic, no text or logos overlaid on the image.'
 
 /** Builds a sensible default prompt from the article headline when the editor hasn't
  *  written one — still editable before generating. */

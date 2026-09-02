@@ -42,7 +42,7 @@ export default async function NewsHqSettingsPage() {
 
   return (
     <div className="page page-wide">
-      <h1>NewsHQ settings</h1>
+      <h1>Sources</h1>
       <p className="subtitle">Wire sources and search defaults used when collecting brief items.</p>
       <NewsHqSettingsForm
         agencies={agencies}
