@@ -5,7 +5,7 @@ import { adminOnly } from '../access/admin'
  *  GET /api/v1/news/filters; base URL stays in NEWS_HQ_SEARCH_BASE_URL. */
 export const NewsHqSettings: GlobalConfig = {
   slug: 'news-hq-settings',
-  label: 'NewsHQ Settings',
+  label: 'Sources',
   access: {
     read: () => true,
     update: adminOnly,
@@ -36,10 +36,10 @@ export const NewsHqSettings: GlobalConfig = {
     {
       name: 'limit',
       type: 'number',
-      defaultValue: 5,
+      defaultValue: 20,
       admin: {
         description:
-          'Max sources kept per topic after ranking + LLM (capped at 5). NewsHQ is queried with limit 50 across multiple keyword layers.',
+          'Max sources kept per topic after ranking + LLM (capped at 20). NewsHQ is queried with limit 50 across multiple keyword layers.',
       },
     },
   ],

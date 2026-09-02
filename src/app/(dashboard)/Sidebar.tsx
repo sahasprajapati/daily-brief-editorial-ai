@@ -10,11 +10,11 @@ export async function Sidebar() {
   const items: SidebarItem[] = [
     { href: '/', label: 'Dashboard', icon: <DashboardIcon /> },
     { href: '/briefs', label: 'Briefs', icon: <BriefsIcon /> },
-    ...(isAdmin ? [{ href: '/settings/newshq', label: 'NewsHQ settings', icon: <NewsHqIcon /> }] : []),
+    ...(isAdmin ? [{ href: '/settings/newshq', label: 'Sources', icon: <NewsHqIcon /> }] : []),
     // Channel AI Instructions: visible to tool admins and to any channel lead (leadOfDesks),
     // not gated to admin-only - a lead manages their own channel's instructions here.
     ...(isAdmin || isChannelLead
-      ? [{ href: '/settings/channel-ai', label: 'Channel AI Instructions', icon: <ChannelAiIcon /> }]
+      ? [{ href: '/settings/channel-ai', label: 'Instructions', icon: <ChannelAiIcon /> }]
       : []),
   ]
 

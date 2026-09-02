@@ -56,9 +56,9 @@ export const GeneratedPieces: CollectionConfig = {
       name: 'coverImageDataUrl',
       type: 'text',
       // Payload's text fields default to a 40k-char maxLength (config.defaultMaxTextLength) -
-      // a base64 data: URI for a single 1024x1024 image is ~2-3M chars, so that default rejects
-      // every real image. 10M chars (~7.5MB binary) covers normal image sizes with headroom
-      // under MongoDB's 16MB document limit.
+      // a base64 data: URI for a single generated cover image (landscape 1536x1024 by default)
+      // is ~2-3M chars, so that default rejects every real image. 10M chars (~7.5MB binary)
+      // covers normal image sizes with headroom under MongoDB's 16MB document limit.
       maxLength: 10_000_000,
       admin: {
         description:

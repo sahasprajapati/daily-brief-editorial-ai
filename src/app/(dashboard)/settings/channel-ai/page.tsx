@@ -24,7 +24,7 @@ export default async function ChannelAiSettingsPage() {
 
   return (
     <div className="page page-wide">
-      <h1>Channel AI Instructions</h1>
+      <h1>Instructions</h1>
 
       {!canViewSelected ? (
         <div className="card">

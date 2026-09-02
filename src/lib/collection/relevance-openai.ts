@@ -14,10 +14,13 @@ const relevanceSchema = z.object({
 })
 
 const SYSTEM_PROMPT = `You judge whether wire-service search hits are relevant to a brief topic.
-A hit is relevant only if it is clearly about the same news story / entities as the topic
-(not merely sharing a generic word like "football", "election", or "war").
-Reject digests, schedules, advisories, and loosely related regional coverage.
-Be strict: when unsure, mark relevant=false.`
+A hit is relevant if it is about the same news story / entities as the topic, or provides
+direct background, context, or follow-up coverage of it - not merely sharing a generic word
+like "football", "election", or "war" with no real connection to the story.
+Reject digests, schedules, advisories, and coverage of a different story in the same region.
+The editor reviews every hit you mark relevant and can reject it in one click, but a hit you
+mark not relevant is discarded and the editor never sees it - so when a hit is a plausible,
+on-topic match, mark it relevant rather than guessing it away.`
 
 export async function runRelevanceCheck(input: {
   topic: string
