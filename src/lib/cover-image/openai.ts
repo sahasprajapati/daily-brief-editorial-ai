@@ -8,7 +8,10 @@ type ImageSize = '1024x1024' | '1024x1536' | '1536x1024'
 /** Cover images run as a website article header/hero banner, so they default to wide landscape
  *  - never square. An editor who has actually typed a different shape into the prompt (square,
  *  portrait, …) means it, so that explicit instruction wins instead of being silently forced
- *  back to landscape. */
+ *  back to landscape. Scans the *whole* final prompt (base style directive + editor's subject
+ *  line, see cover-image/index.ts's buildCoverImagePrompt) — which is exactly why that base
+ *  directive is worded to avoid these trigger words itself; it would otherwise self-trigger the
+ *  override on every single generation. */
 export function resolveImageSize(prompt: string): ImageSize {
   const p = prompt.toLowerCase()
   if (/\bsquare\b|\b1:1\b/.test(p)) return '1024x1024'

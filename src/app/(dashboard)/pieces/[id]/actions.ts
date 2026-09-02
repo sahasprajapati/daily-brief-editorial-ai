@@ -126,24 +126,27 @@ export async function submitForQaReview(
 export async function generateCoverImageForPiece(
   pieceId: string,
   prompt: string,
-): Promise<{ error: string | null; dataUrl: string | null }> {
+): Promise<{ error: string | null; dataUrl: string | null; prompt: string | null }> {
   const user = await requireUser()
   const payload = await getPayload({ config: configPromise })
 
   const trimmedPrompt = prompt.trim()
   if (!trimmedPrompt) {
-    return { error: 'A prompt is required to generate a cover image.', dataUrl: null }
+    return { error: 'A prompt is required to generate a cover image.', dataUrl: null, prompt: null }
   }
 
   try {
     const image = await generateCoverImage(trimmedPrompt)
 
+    // Persist (and hand back to the client) the composed prompt generateCoverImage actually
+    // sent — including the base style directive — not the raw trimmedPrompt the editor typed.
+    // Otherwise the directive is applied but never visible in the saved/displayed prompt.
     await payload.update({
       collection: 'generated-pieces',
       id: pieceId,
       data: {
         coverImageDataUrl: image.dataUrl,
-        coverImagePrompt: trimmedPrompt,
+        coverImagePrompt: image.prompt,
         coverImageGeneratedAt: new Date().toISOString(),
       },
       overrideAccess: false,
@@ -151,11 +154,12 @@ export async function generateCoverImageForPiece(
     })
 
     revalidatePath(`/pieces/${pieceId}`)
-    return { error: null, dataUrl: image.dataUrl }
+    return { error: null, dataUrl: image.dataUrl, prompt: image.prompt }
   } catch (err) {
     return {
       error: err instanceof Error ? err.message : 'Could not generate a cover image.',
       dataUrl: null,
+      prompt: null,
     }
   }
 }
