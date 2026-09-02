@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { generateForBriefItem, setSourceReviewStatus } from './actions'
+import { generateAllForBrief, generateForBriefItem, setSourceReviewStatus } from './actions'
+import type { GenerateAllState } from './actions'
 import type { SourceHit } from './SourceReviewPanel'
 
 export type TopicGenerateRow = {
@@ -24,8 +25,11 @@ export function GenerateStep({
   const [error, setError] = useState<string | null>(null)
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [isGeneratingAll, setIsGeneratingAll] = useState(false)
+  const [allResult, setAllResult] = useState<GenerateAllState | null>(null)
 
   const ready = topics.filter((t) => t.hits.length > 0)
+  const pendingGenerate = ready.filter((t) => !t.pieceId)
 
   if (ready.length === 0) {
     return (
@@ -39,13 +43,54 @@ export function GenerateStep({
     )
   }
 
+  const runGenerateAll = () => {
+    startTransition(async () => {
+      setError(null)
+      setAllResult(null)
+      setIsGeneratingAll(true)
+      const result = await generateAllForBrief(briefId)
+      setIsGeneratingAll(false)
+      if (result.error) setError(result.error)
+      else setAllResult(result)
+      router.refresh()
+    })
+  }
+
   return (
     <div className="card">
       <h2>Step 3 — Generate</h2>
-      <p className="subtitle">
-        One article per topic, written from that topic’s source pack. Use × to drop a source before generating.
-      </p>
+      <div className="form-actions" style={{ justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <p className="subtitle" style={{ marginTop: 0 }}>
+          One article per topic, written from that topic’s source pack. Use × to drop a source before generating.
+        </p>
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={isGeneratingAll || isPending || pendingGenerate.length === 0}
+          onClick={runGenerateAll}
+          title={pendingGenerate.length === 0 ? 'Every topic with sources already has an article' : undefined}
+        >
+          {isGeneratingAll ? 'Generating all…' : `Generate all (${pendingGenerate.length})`}
+        </button>
+      </div>
       {error && <div className="banner banner-error">{error}</div>}
+      {allResult && (
+        <div className={`banner ${allResult.failures.length > 0 ? 'banner-error' : 'banner-success'}`}>
+          Generated {allResult.generatedCount} article{allResult.generatedCount === 1 ? '' : 's'}
+          {allResult.skippedCount > 0
+            ? `, skipped ${allResult.skippedCount} topic${allResult.skippedCount === 1 ? '' : 's'} with no sources or an existing article`
+            : ''}
+          {allResult.failures.length > 0 && (
+            <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem' }}>
+              {allResult.failures.map((failure) => (
+                <li key={failure.topic}>
+                  {failure.topic}: {failure.error}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       <ul className="nhq-source-list">
         {ready.map((topic) => {
           const busy = isPending && pendingId === topic.briefItemId
