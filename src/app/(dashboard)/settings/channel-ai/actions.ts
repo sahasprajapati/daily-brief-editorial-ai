@@ -77,11 +77,12 @@ export async function saveChannelAiSettings(
         overrideAccess: true,
       })
     } else {
-      // No channel-configs doc yet for this channel — create a minimal one. `language` is
-      // required by the schema; editable later via /admin along with erLang/guidelineSlug.
+      // No channel-configs doc yet for this channel — create it. language/erLang/guidelineSlug
+      // are optional overrides set via /admin; generation defaults language to the channel's
+      // own cms-prod language when this is blank.
       await payload.create({
         collection: 'channel-configs',
-        data: { channel: channelId, language: 'English', ...data },
+        data: { channel: channelId, ...data },
         overrideAccess: true,
       })
     }

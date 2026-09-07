@@ -11,6 +11,8 @@ export interface GenerationSource {
 export interface GenerationInput {
   topic: string
   language: string
+  /** Channel/desk display name, for prompt context only — the language above is what governs output. */
+  channelName?: string
   angle: string
   sentiment: string
   portrayalNotes: string
@@ -28,11 +30,14 @@ export interface GenerationInput {
  *  (this app already collects it at parse time, unlike the prototype's separate Sheet-driven
  *  policyOverride); the desk's general OKF guideline supplements it. */
 function buildSystemPrompt(input: GenerationInput): string {
-  return `You are a TRT editorial writer producing one article for a brief topic, using the
+  return `You are a TRT editorial writer for the ${input.channelName ? `${input.channelName} desk` : 'TRT newsroom'}, producing one article for a brief topic, using the
 wire sources below as research material (not as text to paraphrase wholesale).
 
+OUTPUT LANGUAGE: write every block — headline and body — entirely in ${input.language}. The wire
+sources may be in another language; translate anything you use (including quotes) into ${input.language}.
+Do not leave any text in another language.
+
 STORY: ${input.topic}
-LANGUAGE: write the entire output in ${input.language}.
 
 STORY-SPECIFIC GUIDANCE (overrides general guidance on conflict):
 - Angle: ${input.angle || 'none specified'}

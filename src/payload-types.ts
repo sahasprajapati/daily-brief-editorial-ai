@@ -482,9 +482,9 @@ export interface ChannelConfig {
   channel: string;
   channelName?: string | null;
   /**
-   * e.g. 'English', 'Russian' - the language generation writes in.
+   * Override only. Blank = generate in the channel's own cms-prod language. Set e.g. 'English' / 'Russian' to force a different output language.
    */
-  language: string;
+  language?: string | null;
   /**
    * Event Registry language code, e.g. 'eng', 'rus'.
    */

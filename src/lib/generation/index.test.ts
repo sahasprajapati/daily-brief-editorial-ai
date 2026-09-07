@@ -70,6 +70,45 @@ describe('generatePiece', () => {
     expect(created[0].collectedItem).toBe('collected-1')
   })
 
+  test('generates in the channel language, with the channel name, when no config override', async () => {
+    const runSpy = spyOn(openai, 'runGeneration').mockResolvedValue({
+      blocks: [{ type: 'heading', text: 'H' }, { type: 'paragraph', text: 'B.' }],
+    })
+    const { payload } = fakePayload()
+    await generatePiece(payload as any, user, collectedItem, briefItem, brief, null, 'Russian')
+    expect(runSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ language: 'Russian', channelName: 'Test Channel' }),
+    )
+  })
+
+  test('channel-configs.language overrides the channel language', async () => {
+    const runSpy = spyOn(openai, 'runGeneration').mockResolvedValue({
+      blocks: [{ type: 'heading', text: 'H' }, { type: 'paragraph', text: 'B.' }],
+    })
+    const { payload } = fakePayload()
+    await generatePiece(
+      payload as any,
+      user,
+      collectedItem,
+      briefItem,
+      brief,
+      { ...channelConfig, language: 'French' } as any,
+      'Russian',
+    )
+    expect(runSpy).toHaveBeenCalledWith(expect.objectContaining({ language: 'French' }))
+  })
+
+  test('throws instead of defaulting to English when neither channel nor config has a language', async () => {
+    spyOn(openai, 'runGeneration').mockResolvedValue({ blocks: [] })
+    const { payload } = fakePayload()
+    await expect(
+      generatePiece(payload as any, user, collectedItem, briefItem, brief, null, null),
+    ).rejects.toThrow(/no generation language/i)
+    await expect(
+      generatePiece(payload as any, user, collectedItem, briefItem, brief, { ...channelConfig, language: '  ' } as any, ''),
+    ).rejects.toThrow(/no generation language/i)
+  })
+
   test('generatePieceForTopic synthesizes from multiple sources', async () => {
     const second = {
       id: 'collected-2',
@@ -90,6 +129,7 @@ describe('generatePiece', () => {
       [collectedItem, second],
       brief,
       channelConfig,
+      null,
     )
 
     expect(runSpy).toHaveBeenCalledWith(

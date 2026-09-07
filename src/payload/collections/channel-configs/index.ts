@@ -2,9 +2,9 @@ import type { CollectionConfig } from 'payload'
 import { adminOnly, leadOfDeskChannelConfigCreate, leadOfDeskChannelConfigUpdate } from '../../access/admin'
 
 /** Operational config the collection/generation pipeline needs that neither cms-prod nor
- *  `providers` has: what language to generate in, Event Registry's language code for this
- *  desk, and which okf-ruleset guideline file (if any) applies. Unlike channel identity
- *  (name/language, owned by cms-prod), this is pipeline-specific - it belongs here. */
+ *  `providers` has: Event Registry's language code for this desk, which okf-ruleset guideline
+ *  file (if any) applies, and channel-AI instructions. `language` here is only an optional
+ *  override - generation defaults to the channel's own cms-prod language. */
 export const ChannelConfigs: CollectionConfig = {
   slug: 'channel-configs',
   admin: {
@@ -23,8 +23,10 @@ export const ChannelConfigs: CollectionConfig = {
     {
       name: 'language',
       type: 'text',
-      required: true,
-      admin: { description: "e.g. 'English', 'Russian' - the language generation writes in." },
+      admin: {
+        description:
+          "Override only. Blank = generate in the channel's own cms-prod language. Set e.g. 'English' / 'Russian' to force a different output language.",
+      },
     },
     {
       name: 'erLang',

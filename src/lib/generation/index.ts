@@ -13,6 +13,8 @@ export async function generatePieceForTopic(
   collectedItems: CollectedItem[],
   brief: EditorialBrief,
   channelConfig: ChannelConfig | null,
+  /** The channel's own language (from cms-prod). Used unless channelConfig.language overrides it. */
+  channelLanguage: string | null,
 ): Promise<GeneratedPiece> {
   if (collectedItems.length === 0) {
     throw new Error('No sources available for this topic.')
@@ -21,9 +23,19 @@ export async function generatePieceForTopic(
   const guidelineText = await getGuidelineText(channelConfig?.guidelineSlug)
   const primary = collectedItems[0]
 
+  // Generate in the channel's own language; channel-configs.language is an optional override.
+  // No silent English fallback — a channel with neither must fail loudly, not ship wrong-language copy.
+  const language = channelConfig?.language?.trim() || channelLanguage?.trim()
+  if (!language) {
+    throw new Error(
+      `No generation language for channel "${brief.channelName ?? brief.channel}" — cms-prod returned no language for it and channel-configs has no override.`,
+    )
+  }
+
   const result = await runGeneration({
     topic: briefItem.topic,
-    language: channelConfig?.language ?? 'English',
+    language,
+    channelName: brief.channelName ?? channelConfig?.channelName ?? undefined,
     angle: briefItem.angle ?? '',
     sentiment: briefItem.sentiment ?? '',
     portrayalNotes: briefItem.portrayalNotes ?? '',
@@ -87,6 +99,7 @@ export async function generatePiece(
   briefItem: BriefItem,
   brief: EditorialBrief,
   channelConfig: ChannelConfig | null,
+  channelLanguage: string | null = null,
 ): Promise<GeneratedPiece> {
-  return generatePieceForTopic(payload, user, briefItem, [collectedItem], brief, channelConfig)
+  return generatePieceForTopic(payload, user, briefItem, [collectedItem], brief, channelConfig, channelLanguage)
 }

@@ -210,6 +210,17 @@ async function loadChannelConfig(payload: Payload, channel: string): Promise<Cha
   return result.docs[0] ?? null
 }
 
+/** The channel's own language, from cms-prod (falls back to the seeded roster when CMS is
+ *  stubbed). This is the generation language unless channel-configs.language overrides it. */
+async function loadChannelLanguage(channel: string): Promise<string | null> {
+  try {
+    const channels = await getCmsClient().listChannels()
+    return channels.find((c) => c.id === channel)?.language?.trim() || null
+  } catch {
+    return null
+  }
+}
+
 /** Shared by generateForBriefItem and generateAllForBrief so the two can't drift: loads a
  *  topic's remaining (non-rejected) sources and runs generation against them. */
 async function generateOneTopic(
@@ -218,6 +229,7 @@ async function generateOneTopic(
   briefItem: BriefItem,
   brief: EditorialBrief,
   channelConfig: ChannelConfig | null,
+  channelLanguage: string | null,
 ): Promise<{ pieceId: string } | { error: string }> {
   const collected = await payload.find({
     collection: 'collected-items',
@@ -238,7 +250,15 @@ async function generateOneTopic(
   }
 
   try {
-    const piece = await generatePieceForTopic(payload, user, briefItem, collected.docs, brief, channelConfig)
+    const piece = await generatePieceForTopic(
+      payload,
+      user,
+      briefItem,
+      collected.docs,
+      brief,
+      channelConfig,
+      channelLanguage,
+    )
     return { pieceId: piece.id }
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Could not generate a draft for this topic.' }
@@ -267,8 +287,9 @@ export async function generateForBriefItem(
       user,
     })
     const channelConfig = await loadChannelConfig(payload, brief.channel)
+    const channelLanguage = await loadChannelLanguage(brief.channel)
 
-    const result = await generateOneTopic(payload, user, briefItem, brief, channelConfig)
+    const result = await generateOneTopic(payload, user, briefItem, brief, channelConfig, channelLanguage)
     revalidatePath(`/briefs/${briefId}`)
     revalidatePath('/')
     if ('error' in result) return { error: result.error, pieceId: null }
@@ -306,6 +327,7 @@ export async function generateAllForBrief(briefId: string): Promise<GenerateAllS
       user,
     })
     const channelConfig = await loadChannelConfig(payload, brief.channel)
+    const channelLanguage = await loadChannelLanguage(brief.channel)
 
     const briefItems = await payload.find({
       collection: 'brief-items',
@@ -336,7 +358,7 @@ export async function generateAllForBrief(briefId: string): Promise<GenerateAllS
         skippedCount += 1
         continue
       }
-      const result = await generateOneTopic(payload, user, briefItem, brief, channelConfig)
+      const result = await generateOneTopic(payload, user, briefItem, brief, channelConfig, channelLanguage)
       if ('error' in result) {
         // "No sources left" just means this topic has nothing to generate from yet - not a
         // failure worth alarming the editor over, same as it not showing a Generate button.
