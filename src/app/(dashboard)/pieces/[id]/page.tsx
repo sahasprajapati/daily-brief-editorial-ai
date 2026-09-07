@@ -61,6 +61,17 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
   })
   const latest = latestVerdicts.docs[0]
 
+  // Channel-general image instructions (see channel-configs.extraImageInstructions) - only
+  // needed to seed the default prompt for a piece that hasn't generated a cover image yet;
+  // once one exists, its saved coverImagePrompt already has them baked in (buildCoverImagePrompt).
+  const channelConfigResult = await payload.find({
+    collection: 'channel-configs',
+    where: { channel: { equals: piece.channel } },
+    limit: 1,
+    overrideAccess: true,
+  })
+  const extraImageInstructions = (channelConfigResult.docs[0]?.extraImageInstructions ?? []).join('. ')
+
   return (
     <div className="page page-wide">
       <h1>{piece.channelName ?? piece.channel}</h1>
@@ -95,6 +106,7 @@ export default async function ReviewPage({ params }: { params: Promise<{ id: str
         latestVerdict={latest?.verdict ?? null}
         initialCoverImageUrl={piece.coverImageDataUrl ?? null}
         initialCoverImagePrompt={piece.coverImagePrompt ?? null}
+        extraImageInstructions={extraImageInstructions}
       />
     </div>
   )

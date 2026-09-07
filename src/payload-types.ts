@@ -395,7 +395,8 @@ export interface PieceAssignment {
    */
   assignedBy?: (string | null) | User;
   previousAssignee?: (string | null) | User;
-  status: 'claimed' | 'inProgress' | 'inQA' | 'verdictReached' | 'awaitingApproval' | 'approved' | 'published';
+  status:
+    'claimed' | 'inProgress' | 'inQA' | 'verdictReached' | 'drafted' | 'awaitingApproval' | 'approved' | 'published';
   claimedAt: string;
   /**
    * Set when a manager sends a piece back — shown to the editor as the reason. Latest note only, overwritten on the next send-back.
@@ -504,6 +505,14 @@ export interface ChannelConfig {
    * Channel-specific additions to the general desk guideline - article generation writes against the general guideline plus these. Does not replace the general rules.
    */
   extraWritingInstructions?: string[] | null;
+  /**
+   * Shape used for every cover image generated for this channel.
+   */
+  defaultCoverImageRatio?: ('landscape' | 'square' | 'portrait') | null;
+  /**
+   * Channel-specific rules for cover image generation - e.g. people or subjects to avoid depicting. Applied to every cover image generated for this channel.
+   */
+  extraImageInstructions?: string[] | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -834,6 +843,8 @@ export interface ChannelConfigsSelect<T extends boolean = true> {
   majorInstructionsFileText?: T;
   extraQaInstructions?: T;
   extraWritingInstructions?: T;
+  defaultCoverImageRatio?: T;
+  extraImageInstructions?: T;
   updatedAt?: T;
   createdAt?: T;
 }

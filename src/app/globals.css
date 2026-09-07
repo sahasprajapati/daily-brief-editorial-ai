@@ -2055,6 +2055,35 @@ a.mode-tab:hover {
   background: #fef2f2;
 }
 
+.ratio-picker {
+  display: inline-flex;
+  gap: 0.4rem;
+  margin: 0.35rem 0 0.9rem;
+}
+
+.ratio-option {
+  height: 34px;
+  padding: 0 0.85rem;
+  background: #fff;
+  color: #4b5563;
+  border: 1px solid #d7dbe0;
+  border-radius: var(--radius-btn);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.ratio-option:hover {
+  border-color: var(--primary-400);
+  color: var(--primary-500);
+}
+
+.ratio-option.is-active {
+  background: var(--primary-100);
+  border-color: var(--primary-400);
+  color: var(--primary-600);
+}
+
 .instruction-box-edit {
   padding: 0 0.625rem 0.625rem;
 }

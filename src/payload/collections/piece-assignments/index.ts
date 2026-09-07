@@ -36,6 +36,8 @@ export const PieceAssignments: CollectionConfig = {
         'inProgress',
         'inQA',
         'verdictReached',
+        'drafted',
+        // Manager approve/send-back/publish pipeline - dormant, see AssignmentStatus.
         'awaitingApproval',
         'approved',
         'published',

@@ -60,6 +60,8 @@ async function ChannelAiFormLoader({ channelId }: { channelId: string }) {
       majorQaFileText={config?.majorQaFileText ?? ''}
       majorInstructionsFileName={config?.majorInstructionsFileName ?? ''}
       majorInstructionsFileText={config?.majorInstructionsFileText ?? ''}
+      imageRatio={config?.defaultCoverImageRatio ?? 'landscape'}
+      imageInstructions={config?.extraImageInstructions ?? []}
     />
   )
 }
