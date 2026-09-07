@@ -19,9 +19,9 @@ import type { GeneratedPiece, PieceAssignment, User } from '@/payload-types'
 const AI_VERDICT_OKF_VERSION = 'ai'
 
 /** Saves the edit, then runs the AI QA verdict against it — this is the single "Submit" action
- *  on the review page. goodToGo does NOT flip the assignment to awaitingApproval by itself;
- *  the editor still has to explicitly confirm (see confirmAndSendToManager) after seeing the
- *  AI's reasoning. needsAttention/rejected send the piece straight back to editing. */
+ *  on the review page. goodToGo does NOT flip the assignment to 'drafted' by itself; the editor
+ *  still has to explicitly confirm (see markPieceAsDrafted) after seeing the AI's reasoning.
+ *  needsAttention/rejected send the piece straight back to editing. */
 export async function submitForQaReview(
   pieceId: string,
   blocks: ContentBlock[],
@@ -91,7 +91,7 @@ export async function submitForQaReview(
       user,
     })
 
-    // goodToGo waits for the editor's explicit confirm — see confirmAndSendToManager.
+    // goodToGo waits for the editor's explicit confirm — see markPieceAsDrafted.
     if (result.verdict !== 'goodToGo') {
       const assignments = await payload.find({
         collection: 'piece-assignments',
@@ -122,7 +122,10 @@ export async function submitForQaReview(
 
 /** Step 3 — generates (or regenerates) the cover image and persists it on the piece. Doesn't
  *  touch assignment status; the editor can regenerate as many times as they like before moving
- *  on to step 4. */
+ *  on to step 4. Shape and any "avoid depicting X" style rules are channel-general settings
+ *  (channel-configs.defaultCoverImageRatio / extraImageInstructions, edited on the Instructions
+ *  settings page) — not something the editor picks per article, same pattern as the QA/writing
+ *  instructions above. */
 export async function generateCoverImageForPiece(
   pieceId: string,
   prompt: string,
@@ -136,7 +139,25 @@ export async function generateCoverImageForPiece(
   }
 
   try {
-    const image = await generateCoverImage(trimmedPrompt)
+    const piece = await payload.findByID({
+      collection: 'generated-pieces',
+      id: pieceId,
+      overrideAccess: false,
+      user,
+    })
+    const channelConfigResult = await payload.find({
+      collection: 'channel-configs',
+      where: { channel: { equals: piece.channel } },
+      limit: 1,
+      overrideAccess: true,
+    })
+    const channelConfig = channelConfigResult.docs[0]
+
+    const image = await generateCoverImage(
+      trimmedPrompt,
+      channelConfig?.defaultCoverImageRatio ?? undefined,
+      (channelConfig?.extraImageInstructions ?? []).join('. '),
+    )
 
     // Persist (and hand back to the client) the composed prompt generateCoverImage actually
     // sent — including the base style directive — not the raw trimmedPrompt the editor typed.
@@ -164,9 +185,12 @@ export async function generateCoverImageForPiece(
   }
 }
 
-/** The editor's explicit hand-off after seeing a goodToGo AI verdict — this is the only thing
- *  that actually moves the piece to awaitingApproval for manager review. */
-export async function confirmAndSendToManager(pieceId: string): Promise<{ error: string | null }> {
+/** The editor's explicit hand-off after seeing a goodToGo AI verdict and generating a cover
+ *  image — moves the piece to 'drafted', its terminal state for now. No manager review/publish
+ *  step yet; that comes back once CMS integration is in place (see LeadActions, still there but
+ *  unreachable via this status). A plain status update, not statusAfterVerdict — that helper's
+ *  goodToGo branch resolves to the dormant manager-pipeline status, not this one. */
+export async function markPieceAsDrafted(pieceId: string): Promise<{ error: string | null }> {
   const user = await requireUser()
   const payload = await getPayload({ config: configPromise })
 
@@ -179,7 +203,6 @@ export async function confirmAndSendToManager(pieceId: string): Promise<{ error:
       user,
     })
     const assignment = assignments.docs[0]
-    if (!assignment) return { error: 'No assignment for this piece.' }
 
     const verdicts = await payload.find({
       collection: 'qa-verdicts',
@@ -189,18 +212,31 @@ export async function confirmAndSendToManager(pieceId: string): Promise<{ error:
       overrideAccess: true,
     })
     if (verdicts.docs[0]?.verdict !== 'goodToGo') {
-      return { error: 'Latest QA verdict must be goodToGo before this can be sent to a manager.' }
+      return { error: 'Latest QA verdict must be goodToGo before this can be marked as drafted.' }
     }
 
-    await payload.update({
-      collection: 'piece-assignments',
-      id: assignment.id,
-      data: { status: statusAfterVerdict('goodToGo') },
-      overrideAccess: false,
-      user,
-    })
+    if (assignment) {
+      await payload.update({
+        collection: 'piece-assignments',
+        id: assignment.id,
+        data: { status: 'drafted' },
+        overrideAccess: false,
+        user,
+      })
+    } else {
+      // No assignment doc yet - reachable via the read-only brief/output views (ArticleGrid
+      // links straight into /pieces/[id], no claim step), which only a lead/admin can open
+      // without one (see page.tsx's isAssignee || canLead gate). Self-claim it as drafted
+      // rather than erroring, same as ClaimButton's self-claim elsewhere.
+      await payload.create({
+        collection: 'piece-assignments',
+        data: { piece: pieceId, assignedTo: user.id, status: 'drafted', claimedAt: new Date().toISOString() },
+        overrideAccess: false,
+        user,
+      })
+    }
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Could not send this piece to the manager.' }
+    return { error: err instanceof Error ? err.message : 'Could not mark this piece as drafted.' }
   }
 
   revalidatePath(`/pieces/${pieceId}`)

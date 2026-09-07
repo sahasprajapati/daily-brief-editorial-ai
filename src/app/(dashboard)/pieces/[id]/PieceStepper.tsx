@@ -4,14 +4,14 @@ const STEPS = [
   { id: 'edit', label: 'Edit' },
   { id: 'qa', label: 'QA' },
   { id: 'image', label: 'Cover image' },
-  { id: 'manager', label: 'Send to manager' },
+  { id: 'drafted', label: 'Draft' },
 ] as const
 
 const ORDER: Record<PieceStepperStep, number> = {
   edit: 0,
   qa: 1,
   image: 2,
-  manager: 3,
+  drafted: 3,
 }
 
 export function PieceStepper({

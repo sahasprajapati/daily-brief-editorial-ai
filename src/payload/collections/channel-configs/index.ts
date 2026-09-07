@@ -80,6 +80,34 @@ export const ChannelConfigs: CollectionConfig = {
           'Channel-specific additions to the general desk guideline - article generation writes against the general guideline plus these. Does not replace the general rules.',
       },
     },
+    {
+      // General, not per-article: applies to every cover image this channel generates. See
+      // src/lib/cover-image/ratio.ts for the size each option maps to.
+      name: 'defaultCoverImageRatio',
+      type: 'select',
+      defaultValue: 'landscape',
+      options: [
+        { label: 'Landscape', value: 'landscape' },
+        { label: 'Square', value: 'square' },
+        { label: 'Portrait', value: 'portrait' },
+      ],
+      admin: {
+        description: 'Shape used for every cover image generated for this channel.',
+      },
+    },
+    {
+      // Same "one entry per instruction" pattern as extraQaInstructions/extraWritingInstructions
+      // above - channel-wide rules (e.g. "never depict [person]"), not something re-typed per
+      // article. Joined into every cover image prompt for this channel - see buildCoverImagePrompt
+      // (src/lib/cover-image/index.ts) and generateCoverImageForPiece (pieces/[id]/actions.ts).
+      name: 'extraImageInstructions',
+      type: 'text',
+      hasMany: true,
+      admin: {
+        description:
+          'Channel-specific rules for cover image generation - e.g. people or subjects to avoid depicting. Applied to every cover image generated for this channel.',
+      },
+    },
   ],
   timestamps: true,
 }

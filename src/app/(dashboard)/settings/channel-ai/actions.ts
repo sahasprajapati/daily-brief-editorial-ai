@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 import configPromise from '@payload-config'
 import { requireUser } from '@/payload/auth/session'
 import { checkIsAdmin, isLeadOfDesk } from '@/payload/access/admin'
+import type { ImageRatio } from '@/lib/cover-image'
 
 export type SaveChannelAiSettingsState = { error: string | null; saved: boolean }
 
@@ -33,15 +34,26 @@ export async function saveChannelAiSettings(
     .getAll('writingInstructions')
     .map((value) => String(value).trim())
     .filter(Boolean)
+  const extraImageInstructions = formData
+    .getAll('imageInstructions')
+    .map((value) => String(value).trim())
+    .filter(Boolean)
   // Major file slots (see MajorFileSlot) - name+text hidden inputs, both empty when removed.
   const majorQaFileName = String(formData.get('majorQaFileName') || '').trim()
   const majorQaFileText = String(formData.get('majorQaFileText') || '').trim()
   const majorInstructionsFileName = String(formData.get('majorInstructionsFileName') || '').trim()
   const majorInstructionsFileText = String(formData.get('majorInstructionsFileText') || '').trim()
+  const defaultCoverImageRatioRaw = String(formData.get('imageRatio') || '')
+  const defaultCoverImageRatio: ImageRatio =
+    defaultCoverImageRatioRaw === 'square' || defaultCoverImageRatioRaw === 'portrait'
+      ? defaultCoverImageRatioRaw
+      : 'landscape'
 
   const data = {
     extraQaInstructions,
     extraWritingInstructions,
+    extraImageInstructions,
+    defaultCoverImageRatio,
     majorQaFileName,
     majorQaFileText,
     majorInstructionsFileName,

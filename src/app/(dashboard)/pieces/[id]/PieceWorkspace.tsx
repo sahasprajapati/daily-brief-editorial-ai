@@ -6,8 +6,15 @@ import type { ContentBlock } from '@/lib/content-diff'
 import { defaultCoverImagePrompt } from '@/lib/cover-image'
 import { stepFromStatus, type AssignmentStatus, type PieceStepperStep } from '@/lib/pieces/assignment-status'
 import type { QaVerdictResult } from '@/lib/qa-verdict'
-import { confirmAndSendToManager, generateCoverImageForPiece, submitForQaReview } from './actions'
+import { generateCoverImageForPiece, markPieceAsDrafted, submitForQaReview } from './actions'
 import { PieceStepper } from './PieceStepper'
+
+/** Cover images are generated as data: URIs (see cover-image/types.ts) - recovers a reasonable
+ *  filename/extension for the download link from the URI's declared mime type. */
+function coverImageFileName(dataUrl: string): string {
+  const subtype = /^data:image\/([a-z0-9.+-]+);base64,/i.exec(dataUrl)?.[1]?.split('+')[0] ?? 'png'
+  return `cover-image.${subtype === 'jpeg' ? 'jpg' : subtype}`
+}
 
 /** No fixed height/rows — grows with content so the block reads as part of one flowing
  *  document instead of a fixed-size box. */
@@ -19,10 +26,10 @@ function autoGrow(el: HTMLTextAreaElement | null) {
 
 type SubmitState = { error: string | null; result: QaVerdictResult | null }
 type ImageState = { error: string | null; dataUrl: string | null; prompt: string | null }
-type ConfirmState = { error: string | null; confirmed: boolean }
+type DraftState = { error: string | null; drafted: boolean }
 
 const initialSubmitState: SubmitState = { error: null, result: null }
-const initialConfirmState: ConfirmState = { error: null, confirmed: false }
+const initialDraftState: DraftState = { error: null, drafted: false }
 
 const VERDICT_LABEL: Record<QaVerdictResult['verdict'], string> = {
   goodToGo: 'Good to go',
@@ -36,7 +43,9 @@ function bannerClass(verdict: QaVerdictResult['verdict']): string {
   return 'banner-error'
 }
 
-const SENT_STATUSES: AssignmentStatus[] = ['awaitingApproval', 'approved', 'published']
+// 'drafted' is the normal terminal state now; the manager-pipeline statuses are dormant
+// leftovers (see AssignmentStatus) kept here only so an old/manually-edited piece still locks.
+const SENT_STATUSES: AssignmentStatus[] = ['drafted', 'awaitingApproval', 'approved', 'published']
 
 export function PieceWorkspace({
   pieceId,
@@ -45,6 +54,7 @@ export function PieceWorkspace({
   latestVerdict,
   initialCoverImageUrl,
   initialCoverImagePrompt,
+  extraImageInstructions,
 }: {
   pieceId: string
   initialBlocks: ContentBlock[]
@@ -54,12 +64,19 @@ export function PieceWorkspace({
   latestVerdict: QaVerdictResult['verdict'] | null
   initialCoverImageUrl: string | null
   initialCoverImagePrompt: string | null
+  /** Channel-general image instructions (channel-configs.extraImageInstructions, set on the
+   *  Instructions settings page) — only used to seed the default prompt for a piece that hasn't
+   *  generated a cover image yet; the shape (ratio) and these instructions themselves are
+   *  applied server-side on every generation regardless, see generateCoverImageForPiece. */
+  extraImageInstructions: string
 }) {
   const router = useRouter()
   const [blocks, setBlocks] = useState(initialBlocks)
   const [coverImageUrl, setCoverImageUrl] = useState(initialCoverImageUrl)
   const headline = blocks.find((block) => block.type === 'heading')?.text ?? ''
-  const [prompt, setPrompt] = useState(initialCoverImagePrompt || defaultCoverImagePrompt(headline))
+  const [prompt, setPrompt] = useState(
+    initialCoverImagePrompt || defaultCoverImagePrompt(headline, extraImageInstructions),
+  )
 
   const [submitState, submitAction, isSubmitting] = useActionState<SubmitState, FormData>(
     async () => {
@@ -82,25 +99,27 @@ export function PieceWorkspace({
     { error: null, dataUrl: initialCoverImageUrl, prompt: null },
   )
 
-  const [confirmState, confirmAction, isConfirming] = useActionState<ConfirmState, FormData>(
+  const [draftState, draftAction, isDrafting] = useActionState<DraftState, FormData>(
     async () => {
-      const outcome = await confirmAndSendToManager(pieceId)
-      if (outcome.error) return { error: outcome.error, confirmed: false }
+      const outcome = await markPieceAsDrafted(pieceId)
+      if (outcome.error) return { error: outcome.error, drafted: false }
       router.refresh()
-      return { error: null, confirmed: true }
+      return { error: null, drafted: true }
     },
-    initialConfirmState,
+    initialDraftState,
   )
 
-  // Already sent off in an earlier session (page reload after confirming) — nothing left for
-  // the editor to do here, so don't show an editable form that implies otherwise.
-  if (SENT_STATUSES.includes(initialStatus) && !confirmState.confirmed && !submitState.result) {
+  // Already drafted in an earlier session (page reload after marking as drafted) — nothing left
+  // for the editor to do here, so don't show an editable form that implies otherwise.
+  if (SENT_STATUSES.includes(initialStatus) && !draftState.drafted && !submitState.result) {
     return (
       <div>
-        <PieceStepper current="manager" />
+        <PieceStepper current="drafted" />
         <div className="card">
           <p className="subtitle" style={{ marginTop: 0, marginBottom: 0 }}>
-            Sent to the manager for approval — no further action needed here.
+            {initialStatus === 'drafted'
+              ? 'Drafted — no further action needed here.'
+              : 'Sent to the manager for approval — no further action needed here.'}
           </p>
         </div>
       </div>
@@ -112,8 +131,8 @@ export function PieceWorkspace({
   // goodToGo state (and the cover-image step it unlocks) survives a page reload.
   const verdict = result?.verdict ?? (isSubmitting ? null : latestVerdict)
   const passedQa = verdict === 'goodToGo'
-  const readyToConfirm = passedQa && Boolean(coverImageUrl)
-  const locked = confirmState.confirmed
+  const readyToDraft = passedQa && Boolean(coverImageUrl)
+  const locked = draftState.drafted
 
   let displayStep: PieceStepperStep = stepFromStatus(initialStatus)
   if (isSubmitting) {
@@ -121,7 +140,7 @@ export function PieceWorkspace({
   } else if (isGeneratingImage) {
     displayStep = 'image'
   } else if (passedQa) {
-    displayStep = coverImageUrl ? 'manager' : 'image'
+    displayStep = coverImageUrl ? 'drafted' : 'image'
   } else if (result) {
     displayStep = 'edit'
   }
@@ -149,9 +168,9 @@ export function PieceWorkspace({
           </div>
         )}
 
-        {confirmState.confirmed && (
+        {draftState.drafted && (
           <div className="banner banner-success" style={{ marginBottom: '1rem' }}>
-            Sent to the manager for approval.
+            Marked as drafted.
           </div>
         )}
 
@@ -178,7 +197,7 @@ export function PieceWorkspace({
         {!locked && (
           <div className="form-actions" style={{ justifyContent: 'flex-start', gap: '0.75rem' }}>
             <form action={submitAction}>
-              <button type="submit" className="btn-primary" disabled={isSubmitting || isConfirming}>
+              <button type="submit" className="btn-primary" disabled={isSubmitting || isDrafting}>
                 {isSubmitting ? 'Running QA…' : passedQa ? 'Re-run QA' : 'Submit'}
               </button>
             </form>
@@ -199,12 +218,22 @@ export function PieceWorkspace({
             </p>
 
             {coverImageUrl && (
-              /* eslint-disable-next-line @next/next/no-img-element -- data: URI, not a static asset */
-              <img
-                src={coverImageUrl}
-                alt="Generated cover"
-                style={{ width: '100%', maxWidth: '24rem', borderRadius: 'var(--radius-lg)', marginBottom: '0.75rem', display: 'block' }}
-              />
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element -- data: URI, not a static asset */}
+                <img
+                  src={coverImageUrl}
+                  alt="Generated cover"
+                  style={{ width: '100%', maxWidth: '24rem', borderRadius: 'var(--radius-lg)', marginBottom: '0.5rem', display: 'block' }}
+                />
+                <a
+                  href={coverImageUrl}
+                  download={coverImageFileName(coverImageUrl)}
+                  className="btn-link"
+                  style={{ display: 'inline-block', marginBottom: '0.75rem' }}
+                >
+                  Download image
+                </a>
+              </>
             )}
 
             <label htmlFor="cover-image-prompt" className="field-label">
@@ -232,18 +261,18 @@ export function PieceWorkspace({
           </div>
         )}
 
-        {readyToConfirm && !locked && (
+        {readyToDraft && !locked && (
           <div className="form-actions" style={{ justifyContent: 'flex-start', marginTop: '1rem' }}>
-            <form action={confirmAction}>
-              <button type="submit" className="btn-primary" disabled={isConfirming || isSubmitting || isGeneratingImage}>
-                {isConfirming ? 'Sending…' : 'Confirm & send to manager'}
+            <form action={draftAction}>
+              <button type="submit" className="btn-primary" disabled={isDrafting || isSubmitting || isGeneratingImage}>
+                {isDrafting ? 'Marking as drafted…' : 'Mark as drafted'}
               </button>
             </form>
           </div>
         )}
-        {confirmState.error && (
+        {draftState.error && (
           <div className="banner banner-error" style={{ marginTop: '0.75rem' }}>
-            {confirmState.error}
+            {draftState.error}
           </div>
         )}
       </div>

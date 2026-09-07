@@ -1,11 +1,15 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
+import type { ImageRatio } from '@/lib/cover-image'
+import { RATIO_LABEL } from '@/lib/cover-image'
 import { saveChannelAiSettings, type SaveChannelAiSettingsState } from './actions'
 import { InstructionBoxList } from './InstructionBoxList'
 import { MajorFileSlot } from './MajorFileSlot'
 
 const initialState: SaveChannelAiSettingsState = { error: null, saved: false }
+
+const RATIO_OPTIONS: ImageRatio[] = ['landscape', 'square', 'portrait']
 
 export function ChannelAiForm({
   channelId,
@@ -15,6 +19,8 @@ export function ChannelAiForm({
   majorQaFileText,
   majorInstructionsFileName,
   majorInstructionsFileText,
+  imageRatio,
+  imageInstructions,
 }: {
   channelId: string
   qaInstructions: string[]
@@ -23,8 +29,11 @@ export function ChannelAiForm({
   majorQaFileText: string
   majorInstructionsFileName: string
   majorInstructionsFileText: string
+  imageRatio: ImageRatio
+  imageInstructions: string[]
 }) {
   const [state, formAction, isPending] = useActionState(saveChannelAiSettings, initialState)
+  const [ratio, setRatio] = useState<ImageRatio>(imageRatio)
 
   return (
     <form action={formAction} className="card" style={{ marginTop: '1rem' }}>
@@ -71,6 +80,39 @@ export function ChannelAiForm({
           name="writingInstructions"
           initialItems={writingInstructions}
           addPlaceholder="e.g. Spell out acronyms on first reference, then use the short form for the rest of the piece."
+        />
+      </div>
+
+      <hr className="settings-divider" />
+
+      <div className="instructions-section">
+        <p className="instructions-title">Cover image instructions</p>
+        <p className="subtitle" style={{ marginTop: 0 }}>
+          Applied to every cover image generated for this channel — not something re-picked per article.
+        </p>
+
+        <input type="hidden" name="imageRatio" value={ratio} />
+        <span className="field-label">Shape</span>
+        <div className="ratio-picker" role="radiogroup" aria-label="Default cover image shape">
+          {RATIO_OPTIONS.map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="radio"
+              aria-checked={ratio === option}
+              className={`ratio-option${ratio === option ? ' is-active' : ''}`}
+              onClick={() => setRatio(option)}
+            >
+              {RATIO_LABEL[option]}
+            </button>
+          ))}
+        </div>
+
+        <InstructionBoxList
+          key={`image-${channelId}`}
+          name="imageInstructions"
+          initialItems={imageInstructions}
+          addPlaceholder="e.g. Never depict recognizable real people — use silhouettes or wide shots instead."
         />
       </div>
 

@@ -21,9 +21,10 @@ describe('stepFromStatus', () => {
     expect(stepFromStatus('inProgress')).toBe('edit')
     expect(stepFromStatus('inQA')).toBe('qa')
     expect(stepFromStatus('verdictReached')).toBe('qa')
-    expect(stepFromStatus('awaitingApproval')).toBe('manager')
-    expect(stepFromStatus('approved')).toBe('manager')
-    expect(stepFromStatus('published')).toBe('manager')
+    expect(stepFromStatus('drafted')).toBe('drafted')
+    expect(stepFromStatus('awaitingApproval')).toBe('drafted')
+    expect(stepFromStatus('approved')).toBe('drafted')
+    expect(stepFromStatus('published')).toBe('drafted')
   })
 })
 
